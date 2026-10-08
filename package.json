@@ -1,0 +1,135 @@
+{
+  "name": "pml-form-designer",
+  "displayName": "PML Form Designer",
+  "description": "Визуальный дизайнер форм AVEVA E3D PML (.pmlfrm) с точечной правкой кода",
+  "version": "0.1.0",
+  "publisher": "limonov1987",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/limonov1987/pml-form-designer.git"
+  },
+  "keywords": [
+    "AVEVA",
+    "E3D",
+    "PML",
+    "pmlfrm",
+    "form designer"
+  ],
+  "private": true,
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "pmlFormDesigner.editor",
+        "displayName": "PML Form Designer",
+        "selector": [
+          {
+            "filenamePattern": "*.pmlfrm"
+          }
+        ],
+        "priority": "option"
+      }
+    ],
+    "commands": [
+      {
+        "command": "pmlFormDesigner.open",
+        "title": "Открыть в дизайнере форм",
+        "category": "PML"
+      },
+      {
+        "command": "pmlFormDesigner.newForm",
+        "title": "Новая форма",
+        "category": "PML"
+      }
+    ],
+    "configuration": {
+      "title": "PML Form Designer",
+      "properties": {
+        "pmlFormDesigner.callbackPlacement": {
+          "type": "string",
+          "enum": [
+            "init",
+            "gadget"
+          ],
+          "default": "init",
+          "enumDescriptions": [
+            "В методе инициализации формы: !this.gad.callback = |…| (правило B5 проекта); если метода нет — в строке гаджета",
+            "В строке гаджета: callback |…|"
+          ],
+          "description": "Куда записывать callback при двойном щелчке по гаджету"
+        },
+        "pmlFormDesigner.positionStyle": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "spaced",
+            "compact"
+          ],
+          "default": "auto",
+          "enumDescriptions": [
+            "По стилю файла",
+            "xmin .gad + 0.25 (правило B1 проекта)",
+            "xmin.gad+0.25"
+          ],
+          "description": "Запись относительных координат"
+        },
+        "pmlFormDesigner.developer": {
+          "type": "string",
+          "default": "",
+          "description": "Автор в шапке новых форм (-- Developer:). Пусто — имя пользователя Windows"
+        },
+        "pmlFormDesigner.formNamePrefix": {
+          "type": "string",
+          "default": "",
+          "description": "Префикс имён новых форм (подставляется и проверяется в мастере «Новая форма»). Пусто — без проверки"
+        },
+        "pmlFormDesigner.newFormFolder": {
+          "type": "string",
+          "default": "",
+          "description": "Папка новых форм относительно рабочей папки (напр. working/gcc). Пусто или папки нет — выбор в диалоге"
+        }
+      }
+    },
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "pmlFormDesigner.newForm",
+          "when": "explorerResourceIsFolder",
+          "group": "navigation@9"
+        },
+        {
+          "command": "pmlFormDesigner.open",
+          "when": "resourceExtname == .pmlfrm",
+          "group": "navigation@9"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "test": "tsc -p ./ && node --test out/test/core.test.js",
+    "plugincheck": "tsc -p ./ && node out/test/pluginCheck.js ../../LOCAL_LIB ../../SERVER_LIB",
+    "corpus": "tsc -p ./ && node out/test/corpus.js ../../LOCAL_LIB ../../SERVER_LIB",
+    "package": "vsce package",
+    "layout": "tsc -p ./ && node out/test/layoutCorpus.js ../../LOCAL_LIB ../../SERVER_LIB",
+    "preview": "tsc -p ./ && node out/test/preview.js",
+    "e2e": "tsc -p ./ && node out/test/e2e/run.js",
+    "reparentcheck": "tsc -p ./ && node out/test/reparentCheck.js ../../LOCAL_LIB ../../SERVER_LIB"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "~1.74.0",
+    "esbuild": "^0.28.2",
+    "puppeteer-core": "^25.12.0",
+    "typescript": "^5.4.0"
+  }
+}

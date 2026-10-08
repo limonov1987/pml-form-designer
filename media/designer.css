@@ -1,0 +1,163 @@
+/* PML Form Designer: оформление webview. Цвета интерфейса — из темы VS Code,
+   сама форма на холсте рисуется в светлом «оконном» стиле, как в E3D. */
+html, body { height: 100%; margin: 0; padding: 0; }
+body {
+  font-family: var(--vscode-font-family); font-size: var(--vscode-font-size);
+  color: var(--vscode-foreground); background: var(--vscode-editor-background);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+button { font: inherit; }
+
+/* Плашки */
+.banner { padding: 5px 10px; border-left: 3px solid var(--vscode-editorWarning-foreground); background: var(--vscode-editorWidget-background); }
+.banner.err { border-color: var(--vscode-editorError-foreground); }
+.banner button { background: var(--vscode-button-background); color: var(--vscode-button-foreground); border: 0; padding: 2px 10px; cursor: pointer; margin-left: 8px; }
+
+/* Панель инструментов */
+#toolbar { display: flex; align-items: center; gap: 14px; padding: 4px 10px; border-bottom: 1px solid var(--vscode-panel-border); }
+#toolbar .spacer { flex: 1; }
+#title { font-weight: 600; }
+#toolbar label { display: flex; align-items: center; gap: 4px; opacity: .85; }
+
+/* Три панели */
+#main { flex: 1; display: flex; min-height: 0; }
+#tree { width: 240px; overflow: auto; border-right: 1px solid var(--vscode-panel-border); padding: 6px 0; }
+#props { width: 300px; overflow: auto; border-left: 1px solid var(--vscode-panel-border); padding: 8px 10px; }
+#canvasWrap { flex: 1; overflow: auto; position: relative; background: var(--vscode-editorWidget-background); }
+#status { padding: 2px 10px; border-top: 1px solid var(--vscode-panel-border); opacity: .8; font-size: 12px; min-height: 18px; }
+
+/* Дерево */
+#tree ul { list-style: none; margin: 0; padding-left: 14px; }
+#tree > ul { padding-left: 4px; }
+#tree .row { cursor: pointer; padding: 1px 6px; border-radius: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#tree .row:hover { background: var(--vscode-list-hoverBackground); }
+#tree .row.sel { background: var(--vscode-list-activeSelectionBackground); color: var(--vscode-list-activeSelectionForeground); }
+#tree .kind-layout, #tree .kind-statement, #tree .kind-member { opacity: .55; }
+#tree .detail { opacity: .7; margin-left: 6px; }
+.ro { color: var(--vscode-editorWarning-foreground); margin-left: 4px; }
+
+/* Свойства */
+#props h4 { margin: 2px 0 8px; }
+#props table { border-collapse: collapse; width: 100%; }
+#props td { padding: 3px 4px; vertical-align: top; border-bottom: 1px solid var(--vscode-panel-border); word-break: break-word; }
+#props td:first-child { opacity: .7; white-space: nowrap; width: 90px; }
+#props code { font-family: var(--vscode-editor-font-family); font-size: 12px; }
+#props .src { margin-top: 10px; padding: 6px; background: var(--vscode-textCodeBlock-background); font-family: var(--vscode-editor-font-family); font-size: 12px; white-space: pre-wrap; word-break: break-all; }
+#props .link { color: var(--vscode-textLink-foreground); cursor: pointer; }
+#props .empty { opacity: .6; }
+
+/* Холст: окно формы */
+#canvas { position: relative; margin: 24px; display: inline-block; }
+.form-window { position: relative; background: #f0f0f0; color: #000; border: 1px solid #888; box-shadow: 0 4px 16px rgba(0,0,0,.35);
+  font-family: Tahoma, "Segoe UI", sans-serif; }
+.form-title { height: 24px; line-height: 24px; padding: 0 8px; background: #dfe6ee; border-bottom: 1px solid #b8c2cc; font-size: 12px; color: #222;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.form-body { position: relative; }
+.form-body.grid { background-image: radial-gradient(#d9d9d9 1px, transparent 1px); }
+
+/* Гаджеты */
+.g { position: absolute; box-sizing: border-box; font-size: 12px; line-height: 1.2; overflow: hidden; white-space: nowrap; cursor: default; }
+.g:hover { outline: 1px dashed #4a90d9; }
+/* выделение: наверх поднимается только гаджет-не-контейнер; выделенный frame/страница/tabset НЕ перекрывает своё содержимое,
+   иначе следующий щелчок внутри снова попадает в контейнер (нельзя выделить гаджет на вкладке) */
+.g.sel { outline: 2px solid #1a73e8; }
+.g.sel:not(.g-frame) { z-index: 1000 !important; }
+.g.approx { outline: 1px dotted #c77d00; }
+.g.approx.sel { outline: 2px solid #1a73e8; }
+.g .ro-badge { position: absolute; right: 1px; top: 0; color: #c77d00; font-size: 10px; }
+
+.g-button { background: linear-gradient(#fdfdfd, #e3e3e3); border: 1px solid #8a8a8a; border-radius: 3px; display: flex; align-items: center; justify-content: center; }
+.g-button.link { background: none; border: 0; color: #0645ad; text-decoration: underline; justify-content: flex-start; }
+.g-button.pix { font-size: 14px; }
+.g-toggle, .g-rtoggle { display: flex; align-items: center; gap: 4px; }
+.g-toggle .box { width: 12px; height: 12px; border: 1px solid #555; background: #fff; flex: none; }
+.g-rtoggle .box { width: 12px; height: 12px; border: 1px solid #555; background: #fff; border-radius: 50%; flex: none; }
+.g-text, .g-option, .g-combo, .g-numericinput { display: flex; align-items: center; }
+.g .tagl { flex: none; overflow: hidden; text-overflow: ellipsis; padding-right: 4px; }
+.g .field { flex: 1; height: calc(100% - 4px); background: #fff; border: 1px solid #7a7a7a; box-sizing: border-box; position: relative; }
+.g-option .field::after, .g-combo .field::after { content: '▾'; position: absolute; right: 0; top: 0; bottom: 0; width: 14px; text-align: center; background: #e6e6e6; border-left: 1px solid #aaa; line-height: 1.3; }
+.g-list, .g-textpane, .g-selector { display: flex; flex-direction: column; }
+.g-list .field, .g-textpane .field, .g-selector .field { flex: 1; height: auto; overflow: hidden; }
+.g-list .rowx { height: 12px; margin: 2px 3px; background: #e9eef4; }
+.g-paragraph { color: #222; display: flex; align-items: center; }
+.g-paragraph.pix { border: 1px dashed #999; justify-content: center; color: #777; }
+.g-line { display: flex; align-items: center; }
+.g-line::before { content: ''; flex: 1; border-top: 1px solid #999; border-bottom: 1px solid #fff; }
+.g-line.vert::before { border: 0; border-left: 1px solid #999; border-right: 1px solid #fff; height: 100%; flex: none; margin: 0 auto; }
+.g-container { background: repeating-linear-gradient(45deg, #f7f7f7, #f7f7f7 6px, #ececec 6px, #ececec 12px); border: 1px solid #999; color: #666; display: flex; align-items: center; justify-content: center; }
+.g-view, .g-alpha { background: #2b2f36; color: #aaa; display: flex; align-items: center; justify-content: center; border: 1px solid #555; }
+.g-slider { display: flex; align-items: center; }
+.g-slider::before { content: ''; flex: 1; height: 4px; background: #ccc; border: 1px solid #999; border-radius: 2px; }
+.g-rgroup { border: 1px solid #bbb; }
+
+/* frame: рамка с заголовком, panel — без рамки, folduppanel — с полосой заголовка, tabset — с вкладками */
+.g-frame { overflow: visible; background: transparent; }
+.g-frame.normal { border: 1px solid #b0b0b0; border-radius: 3px; }
+.g-frame.normal > .ftitle { position: absolute; left: 6px; top: -1px; padding: 0 3px; background: #f0f0f0; color: #0b3a75; }
+.g-frame.panel, .g-frame.toolbar { outline: 1px dashed rgba(0,0,0,.15); }
+.g-frame.folduppanel { border: 1px solid #9fb3c8; }
+.g-frame.folduppanel > .ftitle { position: absolute; left: 0; right: 0; top: 0; height: 18px; line-height: 18px; padding: 0 6px; background: #d5e1ee; font-weight: 600; }
+.g-frame.tabset { border: 0; }
+.tabs { position: absolute; left: 0; right: 0; top: 0; display: flex; gap: 1px; z-index: 2; }
+.tab { padding: 2px 10px; border: 1px solid #aaa; border-bottom: 0; background: #e2e2e2; border-radius: 3px 3px 0 0; cursor: pointer; font-size: 12px; color: #000; }
+.tab.active { background: #f0f0f0; position: relative; top: 1px; }
+.tabbody { position: absolute; left: 0; right: 0; bottom: 0; border: 1px solid #aaa; }
+.g.hidden-page { display: none; }
+.g-frame.page { border: 0 !important; outline: 0; }   /* страница tabset: рамку даёт tabset */
+.g-frame.page.sel { outline: 2px dashed #1a73e8; outline-offset: -3px; }   /* выделенная страница — видно, что выбрана она */
+
+/* ---------- Этап 3: редактирование ---------- */
+#left { width: 240px; display: flex; flex-direction: column; border-right: 1px solid var(--vscode-panel-border); min-height: 0; }
+#left #tree { flex: 1; width: auto; border-right: 0; }
+#toolbox { padding: 6px 8px 8px; border-bottom: 1px solid var(--vscode-panel-border); max-height: 48%; overflow: auto; flex: none; }
+.tb-title { font-weight: 600; margin: 6px 0 3px; opacity: .85; }
+.tb-title:first-child { margin-top: 0; }
+.tool { display: inline-block; margin: 2px 2px 0 0; padding: 2px 8px; border: 1px solid var(--vscode-panel-border); border-radius: 3px; cursor: grab; user-select: none; background: var(--vscode-editorWidget-background); }
+.tool:hover { background: var(--vscode-list-hoverBackground); }
+.tool.armed { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
+.tb-hint { font-size: 11px; opacity: .6; margin-top: 4px; }
+#canvas.armed .form-body { cursor: crosshair; }
+#canvasWrap:focus { outline: none; }
+
+.seg { display: inline-flex; border: 1px solid var(--vscode-panel-border); border-radius: 3px; overflow: hidden; }
+.segb { background: transparent; color: var(--vscode-foreground); border: 0; padding: 2px 10px; cursor: pointer; }
+.segb.on { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
+.seg.small .segb { padding: 1px 7px; font-size: 12px; }
+.segb:disabled { opacity: .5; cursor: default; }
+
+/* маркеры размера, призрак перетаскивания, направляющие */
+.g .h { position: absolute; width: 7px; height: 7px; background: #1a73e8; border: 1px solid #fff; z-index: 5; }
+.g .h-e { right: -4px; top: calc(50% - 4px); cursor: ew-resize; }
+.g .h-s { bottom: -4px; left: calc(50% - 4px); cursor: ns-resize; }
+.g .h-se { right: -4px; bottom: -4px; cursor: nwse-resize; }
+.g.sel { overflow: visible; }
+.g:not(.readonly) { cursor: move; }
+#ghost { display: none; position: absolute; border: 1px dashed #1a73e8; background: rgba(26,115,232,.12); z-index: 2000; pointer-events: none; }
+.guide { display: none; position: absolute; z-index: 1999; pointer-events: none; }
+.guide.gx { top: 0; bottom: 0; border-left: 1px solid #e8590c; }
+.guide.gy { left: 0; right: 0; border-top: 1px solid #e8590c; }
+.tab.tsel { outline: 2px solid #1a73e8; }
+.tab.add { background: transparent; border-style: dashed; color: #555; }
+
+/* панель свойств: поля */
+#props input.pf { width: 100%; box-sizing: border-box; background: var(--vscode-input-background); color: var(--vscode-input-foreground);
+  border: 1px solid var(--vscode-input-border, transparent); padding: 2px 4px; font-family: var(--vscode-editor-font-family); font-size: 12px; }
+#props input.pf:focus { outline: 1px solid var(--vscode-focusBorder); }
+#props input.pf:disabled { opacity: .6; }
+#props .muted { opacity: .6; font-size: 11px; }
+#props .chk { cursor: pointer; }
+.actions { margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+.act { background: var(--vscode-button-secondaryBackground, #3a3d41); color: var(--vscode-button-secondaryForeground, #fff); border: 0; padding: 3px 10px; cursor: pointer; border-radius: 2px; }
+.act.danger { background: #8b2020; color: #fff; }
+
+/* перенос между контейнерами: подсветка целевого frame / формы */
+.g.drop-target { outline: 2px dashed #2f9e44 !important; outline-offset: 1px; background-color: rgba(47,158,68,.06); }
+.form-body.drop-target { outline: 2px dashed #2f9e44; outline-offset: -3px; }
+
+/* кнопка панели инструментов */
+.tbtn { background: var(--vscode-button-secondaryBackground, #3a3d41); color: var(--vscode-button-secondaryForeground, #fff); border: 0; padding: 2px 10px; cursor: pointer; border-radius: 2px; }
+.tbtn:hover { filter: brightness(1.15); }
+
+/* направляющая к гаджету ниже по тексту: только выравнивание, координата будет абсолютной */
+.guide.gx.abs { border-left-style: dashed; }
+.guide.gy.abs { border-top-style: dashed; }

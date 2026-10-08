@@ -1,0 +1,7 @@
+src/**
+out/test/**
+out/**/*.map
+out/*.log
+node_modules/**
+tsconfig.json
+*.vsix
