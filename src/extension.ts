@@ -11,12 +11,22 @@ import { decodeFile, encodeUtf8Bom, FileEncoding } from './core/encoding';
 import { Edit, CodeStyle } from './core/edits';
 import { execute, Request } from './core/operations';
 import { newFormText, validateFormName, formNameWarning, formFileName, FormKind, FormTemplate } from './core/template';
+import { L, setLang, getLang, Lang } from './core/i18n';
 import * as os from 'os';
 
 const VIEW_TYPE = 'pmlFormDesigner.editor';
 
+/** Язык интерфейса: настройка pmlFormDesigner.language; auto — по языку VS Code (ru* → русский, иначе английский). */
+function resolveLang(): Lang {
+    const v = vscode.workspace.getConfiguration('pmlFormDesigner').get<string>('language', 'auto');
+    if (v === 'ru' || v === 'en') return v;
+    return vscode.env.language.toLowerCase().startsWith('ru') ? 'ru' : 'en';
+}
+
 export function activate(context: vscode.ExtensionContext) {
+    setLang(resolveLang());
     context.subscriptions.push(
+        vscode.workspace.onDidChangeConfiguration(e => { if (e.affectsConfiguration('pmlFormDesigner.language')) setLang(resolveLang()); }),
         vscode.window.registerCustomEditorProvider(VIEW_TYPE, new FormDesignerProvider(context), {
             webviewOptions: { retainContextWhenHidden: true },
         }),
@@ -49,15 +59,19 @@ class FormDesignerProvider implements vscode.CustomTextEditorProvider {
         const encodingGuard = async (): Promise<boolean> => {
             if (encoding === 'utf8bom') return true;
             if (encoding === 'cp1251') {
-                const a = await vscode.window.showWarningMessage('Файл в cp1251: правка в дизайнере испортит кириллицу. Сначала конвертируйте в UTF-8 с BOM.', 'Конвертировать');
-                if (a === 'Конвертировать') await convertToUtf8Bom(document, () => detectEncoding().then(render));
+                const conv = L('Конвертировать', 'Convert');
+                const a = await vscode.window.showWarningMessage(L('Файл в cp1251: правка в дизайнере испортит кириллицу. Сначала конвертируйте в UTF-8 с BOM.',
+                    'The file is in cp1251: editing it in the designer would corrupt Cyrillic text. Convert it to UTF-8 with BOM first.'), conv);
+                if (a === conv) await convertToUtf8Bom(document, () => detectEncoding().then(render));
                 return false;
             }
             if (askedUtf8) return true;
             askedUtf8 = true;
-            const a = await vscode.window.showInformationMessage('Файл в UTF-8 без BOM. Дизайнер сохраняет UTF-8 с BOM — конвертировать сейчас?', 'Конвертировать', 'Продолжить так');
-            if (a === 'Конвертировать') { await convertToUtf8Bom(document, () => detectEncoding().then(render)); return false; }
-            return a === 'Продолжить так';
+            const conv = L('Конвертировать', 'Convert'), keep = L('Продолжить так', 'Continue as is');
+            const a = await vscode.window.showInformationMessage(L('Файл в UTF-8 без BOM. Дизайнер сохраняет UTF-8 с BOM — конвертировать сейчас?',
+                'The file is UTF-8 without BOM. The designer saves UTF-8 with BOM — convert now?'), conv, keep);
+            if (a === conv) { await convertToUtf8Bom(document, () => detectEncoding().then(render)); return false; }
+            return a === keep;
         };
 
         let timer: NodeJS.Timeout | undefined;
@@ -105,31 +119,33 @@ async function newForm(folder?: vscode.Uri) {
     const cfg = vscode.workspace.getConfiguration('pmlFormDesigner');
     const prefix = cfg.get<string>('formNamePrefix', '').trim();
     const name = await vscode.window.showInputBox({
-        title: 'Новая форма PML (1/4): имя', prompt: prefix ? `Имя формы без !! (префикс ${prefix})` : 'Имя формы без !!', value: prefix,
+        title: L('Новая форма PML (1/4): имя', 'New PML form (1/4): name'),
+        prompt: prefix ? L(`Имя формы без !! (префикс ${prefix})`, `Form name without !! (prefix ${prefix})`) : L('Имя формы без !!', 'Form name without !!'), value: prefix,
         valueSelection: [prefix.length, prefix.length], validateInput: v => validateFormName(v.trim()),
     });
     if (!name) return;
     const warn = formNameWarning(name.trim(), prefix);
-    if (warn && (await vscode.window.showWarningMessage(warn, 'Продолжить', 'Отмена')) !== 'Продолжить') return;
+    const go = L('Продолжить', 'Continue');
+    if (warn && (await vscode.window.showWarningMessage(warn, go, L('Отмена', 'Cancel'))) !== go) return;
 
     const kinds: { label: string; formKind: FormKind; resize: boolean; description: string }[] = [
-        { label: 'dialog docking right', formKind: 'dialog docking right', resize: false, description: 'панель справа (как большинство форм проекта)' },
-        { label: 'dialog', formKind: 'dialog', resize: false, description: 'обычный диалог' },
-        { label: 'dialog resize', formKind: 'dialog', resize: true, description: 'диалог с изменяемым размером' },
-        { label: 'dialog docking left', formKind: 'dialog docking left', resize: false, description: 'панель слева' },
-        { label: 'document', formKind: 'document', resize: false, description: 'окно-документ' },
+        { label: 'dialog docking right', formKind: 'dialog docking right', resize: false, description: L('панель справа', 'panel docked right') },
+        { label: 'dialog', formKind: 'dialog', resize: false, description: L('обычный диалог', 'plain dialog') },
+        { label: 'dialog resize', formKind: 'dialog', resize: true, description: L('диалог с изменяемым размером', 'resizable dialog') },
+        { label: 'dialog docking left', formKind: 'dialog docking left', resize: false, description: L('панель слева', 'panel docked left') },
+        { label: 'document', formKind: 'document', resize: false, description: L('окно-документ', 'document window') },
     ];
-    const kind = await vscode.window.showQuickPick(kinds, { title: 'Новая форма PML (2/4): вид окна' });
+    const kind = await vscode.window.showQuickPick(kinds, { title: L('Новая форма PML (2/4): вид окна', 'New PML form (2/4): window kind') });
     if (!kind) return;
 
-    const title = await vscode.window.showInputBox({ title: 'Новая форма PML (3/4): заголовок окна', prompt: '!this.formTitle', value: '' });
+    const title = await vscode.window.showInputBox({ title: L('Новая форма PML (3/4): заголовок окна', 'New PML form (3/4): window title'), prompt: '!this.formTitle', value: '' });
     if (title === undefined) return;
 
     const templates: { label: string; template: FormTemplate; description: string }[] = [
-        { label: 'Пустая', template: 'empty', description: 'setup form, конструктор, .init()' },
-        { label: 'С кнопками «Применить» / «Закрыть»', template: 'applyClose', description: 'callbacks в .init() (B5) + метод .apply()' },
+        { label: L('Пустая', 'Empty'), template: 'empty', description: L('setup form, конструктор, .init()', 'setup form, constructor, .init()') },
+        { label: L('С кнопками «Применить» / «Закрыть»', 'With Apply / Close buttons'), template: 'applyClose', description: L('callbacks в .init() + метод .apply()', 'callbacks in .init() + .apply() method') },
     ];
-    const tpl = await vscode.window.showQuickPick(templates, { title: 'Новая форма PML (4/4): шаблон' });
+    const tpl = await vscode.window.showQuickPick(templates, { title: L('Новая форма PML (4/4): шаблон', 'New PML form (4/4): template') });
     if (!tpl) return;
 
     // папка
@@ -142,7 +158,7 @@ async function newForm(folder?: vscode.Uri) {
         if (def) { try { defExists = (await vscode.workspace.fs.stat(def)).type === vscode.FileType.Directory; } catch { /* нет */ } }
         if (defExists) dir = def;
         else {
-            const pick = await vscode.window.showOpenDialog({ canSelectFolders: true, canSelectFiles: false, openLabel: 'Создать форму здесь', defaultUri: ws });
+            const pick = await vscode.window.showOpenDialog({ canSelectFolders: true, canSelectFiles: false, openLabel: L('Создать форму здесь', 'Create form here'), defaultUri: ws });
             dir = pick?.[0];
         }
     }
@@ -150,7 +166,7 @@ async function newForm(folder?: vscode.Uri) {
     const uri = vscode.Uri.joinPath(dir, formFileName(name.trim()));
     try {
         await vscode.workspace.fs.stat(uri);
-        vscode.window.showErrorMessage(`Файл уже существует: ${vscode.workspace.asRelativePath(uri)}`);
+        vscode.window.showErrorMessage(L(`Файл уже существует: ${vscode.workspace.asRelativePath(uri)}`, `File already exists: ${vscode.workspace.asRelativePath(uri)}`));
         return;
     } catch { /* файла нет — создаём */ }
 
@@ -161,7 +177,9 @@ async function newForm(folder?: vscode.Uri) {
     });
     await vscode.workspace.fs.writeFile(uri, encodeUtf8Bom(text));
     await vscode.commands.executeCommand('vscode.openWith', uri, VIEW_TYPE);
-    vscode.window.showInformationMessage(`Создана форма !!${name.trim()} — ${vscode.workspace.asRelativePath(uri)}. В E3D: pml rehash, затем show !!${name.trim()}`);
+    const rel = vscode.workspace.asRelativePath(uri), n = name.trim();
+    vscode.window.showInformationMessage(L(`Создана форма !!${n} — ${rel}. В E3D: pml rehash, затем show !!${n}`,
+        `Form !!${n} created — ${rel}. In E3D: pml rehash, then show !!${n}`));
 }
 
 function settings() {
@@ -179,7 +197,7 @@ async function runOperation(document: vscode.TextDocument, req: Request, select:
     if (req.op === 'callback') req = { ...req, placement: cfg.placement };
     let res = execute(document.getText(), req, cfg.style);
     if (res.confirm) {
-        const yes = req.op === 'delete' ? 'Удалить' : 'Да';
+        const yes = req.op === 'delete' ? L('Удалить', 'Delete') : L('Да', 'Yes');
         const a = await vscode.window.showWarningMessage(res.confirm, { modal: true }, yes);
         if (a !== yes) return;
         res = execute(document.getText(), { ...req, force: true } as Request, cfg.style);
@@ -187,7 +205,7 @@ async function runOperation(document: vscode.TextDocument, req: Request, select:
     if (res.error) { vscode.window.showWarningMessage(res.error); return; }
     if (res.edits.length) {
         const ok = await vscode.workspace.applyEdit(toWorkspaceEdit(document, res.edits));
-        if (!ok) { vscode.window.showErrorMessage('Не удалось применить правку'); return; }
+        if (!ok) { vscode.window.showErrorMessage(L('Не удалось применить правку', 'Failed to apply the edit')); return; }
     }
     if (res.select) select(res.select);
     if (res.notice) vscode.window.showInformationMessage(res.notice);
@@ -237,12 +255,13 @@ function toWorkspaceEdit(document: vscode.TextDocument, edits: Edit[]): vscode.W
 /** Перекодировать файл в UTF-8 с BOM (логика CP1251toUTF8). Исходник предварительно сохраняется в .bak рядом. */
 async function convertToUtf8Bom(document: vscode.TextDocument, after: () => Promise<void>) {
     if (document.isDirty) {
-        vscode.window.showWarningMessage('Сначала сохраните файл, затем конвертируйте кодировку.');
+        vscode.window.showWarningMessage(L('Сначала сохраните файл, затем конвертируйте кодировку.', 'Save the file first, then convert the encoding.'));
         return;
     }
+    const rel = vscode.workspace.asRelativePath(document.uri), conv = L('Конвертировать', 'Convert');
     const ok = await vscode.window.showWarningMessage(
-        `Конвертировать ${vscode.workspace.asRelativePath(document.uri)} из cp1251 в UTF-8 с BOM?`, { modal: true }, 'Конвертировать');
-    if (ok !== 'Конвертировать') return;
+        L(`Конвертировать ${rel} в UTF-8 с BOM?`, `Convert ${rel} to UTF-8 with BOM?`), { modal: true }, conv);
+    if (ok !== conv) return;
     const bytes = await vscode.workspace.fs.readFile(document.uri);
     const { text, encoding } = decodeFile(bytes);
     if (encoding === 'utf8bom') return;
@@ -250,7 +269,7 @@ async function convertToUtf8Bom(document: vscode.TextDocument, after: () => Prom
     await vscode.workspace.fs.writeFile(document.uri, encodeUtf8Bom(text));
     // перечитать документ с новой кодировкой (BOM определяется автоматически)
     await vscode.commands.executeCommand('workbench.action.files.revert');
-    vscode.window.showInformationMessage(`Готово. Оригинал: ${vscode.workspace.asRelativePath(document.uri)}.bak`);
+    vscode.window.showInformationMessage(L(`Готово. Оригинал: ${rel}.bak`, `Done. Original: ${rel}.bak`));
     await after();
 }
 
@@ -269,7 +288,7 @@ function shellHtml(webview: vscode.Webview, media: vscode.Uri): string {
     const css = webview.asWebviewUri(vscode.Uri.joinPath(media, 'designer.css'));
     const js = webview.asWebviewUri(vscode.Uri.joinPath(media, 'designer.js'));
     return `<!DOCTYPE html>
-<html lang="ru"><head><meta charset="UTF-8">
+<html lang="${getLang()}"><head><meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
 <link rel="stylesheet" href="${css}">
 </head>
@@ -277,43 +296,43 @@ function shellHtml(webview: vscode.Webview, media: vscode.Uri): string {
  <div id="banners"></div>
  <div id="toolbar">
    <span id="title">PML Form Designer</span>
-   <button id="newForm" class="tbtn" title="Создать новую форму в папке этого файла">＋ Новая форма</button>
+   <button id="newForm" class="tbtn" data-i18n="newForm" data-i18n-title="newFormTip">＋ Новая форма</button>
    <span class="spacer"></span>
-   <span class="seg" title="Как записывать позицию новых гаджетов и гаджетов без AT при перемещении">
-     <button id="modeRel" class="segb">Отн.</button><button id="modeAbs" class="segb">Абс.</button>
+   <span class="seg" data-i18n-title="modeTip">
+     <button id="modeRel" class="segb" data-i18n="rel">Отн.</button><button id="modeAbs" class="segb" data-i18n="abs">Абс.</button>
    </span>
-   <label>Масштаб <input id="zoom" type="range" min="50" max="200" value="100"></label>
-   <label><input id="showGrid" type="checkbox" checked> сетка</label>
+   <label><span data-i18n="zoom">Масштаб</span> <input id="zoom" type="range" min="50" max="200" value="100"></label>
+   <label><input id="showGrid" type="checkbox" checked> <span data-i18n="grid">сетка</span></label>
  </div>
  <div id="main">
    <div id="left">
      <div id="toolbox">
-       <div class="tb-title">Основные</div>
-       <div class="tool" draggable="true" data-type="button" title="button .x |Кнопка| at … wid 10">▭ button</div>
-       <div class="tool" draggable="true" data-type="text" title="text .x |Текст| at … wid 10 is STRING">⌨ text</div>
-       <div class="tool" draggable="true" data-type="paragraph" title="para .x at … text |Надпись|">A para</div>
-       <div class="tool" draggable="true" data-type="toggle" title="toggle .x |Флажок| at …">☑ toggle</div>
-       <div class="tool" draggable="true" data-type="option" title="option .x |Выбор| at … wid 10">▾ option</div>
-       <div class="tool" draggable="true" data-type="combo" title="combo .x |Список| tagwid 8 at … wid 10">⌄ combo</div>
-       <div class="tool" draggable="true" data-type="list" title="list .x |Список| at … wid 20 hei 5">☰ list</div>
-       <div class="tool" draggable="true" data-type="textpane" title="textpane .x |Текст| at … wid 30 hei 5">¶ textpane</div>
-       <div class="tb-title">Контейнеры</div>
-       <div class="tool" draggable="true" data-type="frame" title="frame .x |Рамка| at … wid 20 hei 4 / exit">▢ frame</div>
-       <div class="tool" draggable="true" data-type="tabset" title="frame .x tabset + страница">⧉ tabset</div>
-       <div class="tool" draggable="true" data-type="radiogroup" title="frame с двумя rtoggle (группа переключателей, Справочник 12.1)">◉ группа rtoggle</div>
-       <div class="tool" draggable="true" data-type="container" title="container .x PmlNetControl '' — для NetGrid / .NET">⊞ .NET container</div>
-       <div class="tb-title">Ещё</div>
-       <div class="tool" draggable="true" data-type="rtoggle" title="rtoggle .x |Вариант| — только внутри frame">◉ rtoggle</div>
-       <div class="tool" draggable="true" data-type="numericinput" title="numericinput .x |Число| tagwid 8 at … range 0 100 ndp 0 wid 6">± numeric</div>
+       <div class="tb-title" data-i18n="tbBasic">Основные</div>
+       <div class="tool" draggable="true" data-type="button" data-i18n-title="tipButton" title="button .x |Кнопка| at … wid 10">▭ button</div>
+       <div class="tool" draggable="true" data-type="text" data-i18n-title="tipText" title="text .x |Текст| at … wid 10 is STRING">⌨ text</div>
+       <div class="tool" draggable="true" data-type="paragraph" data-i18n-title="tipPara" title="para .x at … text |Надпись|">A para</div>
+       <div class="tool" draggable="true" data-type="toggle" data-i18n-title="tipToggle" title="toggle .x |Флажок| at …">☑ toggle</div>
+       <div class="tool" draggable="true" data-type="option" data-i18n-title="tipOption" title="option .x |Выбор| at … wid 10">▾ option</div>
+       <div class="tool" draggable="true" data-type="combo" data-i18n-title="tipCombo" title="combo .x |Список| tagwid 8 at … wid 10">⌄ combo</div>
+       <div class="tool" draggable="true" data-type="list" data-i18n-title="tipList" title="list .x |Список| at … wid 20 hei 5">☰ list</div>
+       <div class="tool" draggable="true" data-type="textpane" data-i18n-title="tipTextpane" title="textpane .x |Текст| at … wid 30 hei 5">¶ textpane</div>
+       <div class="tb-title" data-i18n="tbContainers">Контейнеры</div>
+       <div class="tool" draggable="true" data-type="frame" data-i18n-title="tipFrame" title="frame .x |Рамка| at … wid 20 hei 4 / exit">▢ frame</div>
+       <div class="tool" draggable="true" data-type="tabset" data-i18n-title="tipTabset" title="frame .x tabset + страница">⧉ tabset</div>
+       <div class="tool" draggable="true" data-type="radiogroup" data-i18n="toolRadiogroup" data-i18n-title="tipRadiogroup" title="frame с двумя rtoggle (группа переключателей, Справочник 12.1)">◉ группа rtoggle</div>
+       <div class="tool" draggable="true" data-type="container" data-i18n-title="tipContainer" title="container .x PmlNetControl '' — для NetGrid / .NET">⊞ .NET container</div>
+       <div class="tb-title" data-i18n="tbMore">Ещё</div>
+       <div class="tool" draggable="true" data-type="rtoggle" data-i18n-title="tipRtoggle" title="rtoggle .x |Вариант| — только внутри frame">◉ rtoggle</div>
+       <div class="tool" draggable="true" data-type="numericinput" data-i18n-title="tipNumeric" title="numericinput .x |Число| tagwid 8 at … range 0 100 ndp 0 wid 6">± numeric</div>
        <div class="tool" draggable="true" data-type="slider" title="slider .x horizontal at … range 0 100 step 1 val 50 wid 20">⊸ slider</div>
        <div class="tool" draggable="true" data-type="line" title="line .x at … horiz wid 30 hei 0.5">― line</div>
-       <div class="tool" draggable="true" data-type="selector" title="selector .x |Элементы| at … single wid 25 hei 8 database auto">⌸ selector</div>
-       <div class="tb-hint">Перетащите на форму или выберите и щёлкните место</div>
+       <div class="tool" draggable="true" data-type="selector" data-i18n-title="tipSelector" title="selector .x |Элементы| at … single wid 25 hei 8 database auto">⌸ selector</div>
+       <div class="tb-hint" data-i18n="tbHint">Перетащите на форму или выберите и щёлкните место</div>
      </div>
      <div id="tree"></div>
    </div>
    <div id="canvasWrap" tabindex="0"><div id="canvas"></div></div>
-   <div id="props"><div class="empty">Выберите гаджет на холсте или в дереве</div></div>
+   <div id="props"><div class="empty" data-i18n="selectHint">Выберите гаджет на холсте или в дереве</div></div>
  </div>
  <div id="status"></div>
 <script nonce="${nonce}" src="${js}"></script>

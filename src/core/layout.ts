@@ -13,6 +13,7 @@
 import { FormDocument, FormNode, GadgetNode, LayoutNode } from './form';
 import { Coord, ParsedGadget, SizeSpec } from './gadget';
 
+import { L } from './i18n';
 export interface Box {
     x: number; y: number; w: number; h: number;
 }
@@ -128,9 +129,9 @@ export function layoutForm(doc: FormDocument): FormLayout {
             if (n.kind === 'statement') {
                 // $-макросы и if внутри setup делают дальнейшую раскладку неточной
                 // гаджеты внутри if/do могут не создаваться или повторяться — помечаем только их
-                if (/^(if|do)$/.test(n.keyword)) { cond.push(`${n.keyword} в setup (строка ${n.line + 1})`); ctx = { ...ctx, approx: ctx.approx || cond[0] }; }
+                if (/^(if|do)$/.test(n.keyword)) { cond.push(L(`${n.keyword} в setup (строка ${n.line + 1})`, `${n.keyword} in setup (line ${n.line + 1})`)); ctx = { ...ctx, approx: ctx.approx || cond[0] }; }
                 else if (/^(endif|enddo)$/.test(n.keyword)) { cond.pop(); if (!cond.length) ctx = { ...ctx, approx: outerApprox }; }
-                else if (n.keyword.startsWith('$') && !ctx.approx) ctx = { ...ctx, approx: `макрос ${n.keyword} в setup (строка ${n.line + 1})` };
+                else if (n.keyword.startsWith('$') && !ctx.approx) ctx = { ...ctx, approx: L(`макрос ${n.keyword} в setup (строка ${n.line + 1})`, `macro ${n.keyword} in setup (line ${n.line + 1})`) };
                 continue;
             }
             if (n.kind === 'block') { layoutNodes(n.children, c, ctx); continue; }
@@ -152,7 +153,7 @@ export function layoutForm(doc: FormDocument): FormLayout {
         const mark = (why: string) => { if (!lg.approx) { lg.approx = true; lg.approxWhy = why; } };
         if (ctx.approx) mark(ctx.approx);
         const macro = g.extras.find(e => e.startsWith('$'));
-        if (macro) mark(`макрос ${macro}`);
+        if (macro) mark(L(`макрос ${macro}`, `macro ${macro}`));
         if (['text', 'option', 'combo', 'numericinput'].includes(g.type)) lg.tagW = tagW(g, textWidth(g.tag, varChars));
         // 1. Размер (для frame — предварительный, уточняется после содержимого)
         let { w, h } = defaultSize(g, varChars, lg);
@@ -162,7 +163,7 @@ export function layoutForm(doc: FormDocument): FormLayout {
             if (spec.mode === 'same') {
                 const ref = spec.ref ? all.get(spec.ref.toLowerCase()) : c.last;
                 if (ref) return kind === 'w' ? ref.w : ref.h;
-                mark(`не найден гаджет .${spec.ref} для размера`); return cur;
+                mark(L(`не найден гаджет .${spec.ref} для размера`, `gadget .${spec.ref} for size not found`)); return cur;
             }
             if (spec.mode === 'to' && pos !== undefined) {
                 const expr = spec.raw.trim().replace(/^to\s+/i, '');
@@ -173,11 +174,11 @@ export function layoutForm(doc: FormDocument): FormLayout {
                     const lo = kind === 'w' ? (ref ? ref.x : 0) : (ref ? ref.y : 0);
                     const sz = kind === 'w' ? (ref ? ref.w : c.xmax) : (ref ? ref.h : c.ymax);
                     const edge = m[1].toLowerCase() === 'min' ? lo : m[1].toLowerCase() === 'max' ? lo + sz : lo + sz / 2;
-                    if (m[0].length !== expr.length) mark(`размер ${spec.raw}`);
+                    if (m[0].length !== expr.length) mark(L(`размер ${spec.raw}`, `size ${spec.raw}`));
                     return Math.max(1, edge - pos);
                 }
             }
-            mark(`размер ${spec.raw}`); return cur;
+            mark(L(`размер ${spec.raw}`, `size ${spec.raw}`)); return cur;
         };
         w = resolveSize(g.width, 'w', w);
         h = resolveSize(g.height, 'h', h);
@@ -228,15 +229,15 @@ export function layoutForm(doc: FormDocument): FormLayout {
 
     /** Координата AT в сетке контейнера c. */
     const resolveCoord = (co: Coord, c: Container, w: number, h: number): { v: number; why?: string } => {
-        if (co.mode === 'abs') return { v: co.value, why: co.exact ? undefined : 'сложное выражение в AT' };
+        if (co.mode === 'abs') return { v: co.value, why: co.exact ? undefined : L('сложное выражение в AT', 'complex expression in AT') };
         const isX = co.axis === 'x';
-        let lo: number, size: number, why = co.exact ? undefined : 'сложное выражение в AT';
+        let lo: number, size: number, why = co.exact ? undefined : L('сложное выражение в AT', 'complex expression in AT');
         if (co.ref === 'form') {
             lo = 0; size = isX ? c.xmax : c.ymax;
         } else {
             const ref = co.ref ? all.get(co.ref.toLowerCase()) : (c.last && { ...c.last, c });
             // без имени и без предыдущего гаджета (первый в контейнере) — от начала контейнера
-            if (!ref) { lo = 0; size = 0; if (co.ref) why = `не найден гаджет .${co.ref}`; }
+            if (!ref) { lo = 0; size = 0; if (co.ref) why = L(`не найден гаджет .${co.ref}`, `gadget .${co.ref} not found`); }
             else {
                 // гаджет из другого контейнера — переводим через абсолютные координаты
                 const abs = isX ? ref.c.ox + ref.x : ref.c.oy + ref.y;

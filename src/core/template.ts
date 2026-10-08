@@ -3,6 +3,8 @@
 // B1 — `setup form !!bnpxxx dialog [docking right|left]`, B2 — шапка файла и блоки описания методов,
 // B4 — отступ 4 пробела, B5 — конструктор минимальный, инициализация и callbacks — в .init() через !this.initCall.
 
+import { L } from './i18n';
+
 export type FormKind = 'dialog' | 'dialog docking right' | 'dialog docking left' | 'document';
 export type FormTemplate = 'empty' | 'applyClose';
 
@@ -22,17 +24,17 @@ const RULE = '------------------------------------------------------------------
 
 /** Проверка имени формы: null — ок, иначе текст ошибки. Предупреждение о префиксе — отдельно (formNameWarning). */
 export function validateFormName(name: string): string | null {
-    if (!name) return 'Введите имя формы';
-    if (name.startsWith('!!')) return 'Без !! — только имя, напр. bnpMyForm';
-    if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(name)) return 'Имя: латинские буквы, цифры, _; начинается с буквы';
-    if (/^cd/i.test(name)) return 'Префикс CD зарезервирован AVEVA (правило A3)';
+    if (!name) return L('Введите имя формы', 'Enter the form name');
+    if (name.startsWith('!!')) return L('Без !! — только имя, напр. bnpMyForm', 'Without !! — just the name, e.g. myForm');
+    if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(name)) return L('Имя: латинские буквы, цифры, _; начинается с буквы', 'Name: Latin letters, digits, _; must start with a letter');
+    if (/^cd/i.test(name)) return L('Префикс CD зарезервирован AVEVA (правило A3)', 'The CD prefix is reserved by AVEVA');
     return null;
 }
 
 /** Предупреждение, если имя не начинается с префикса команды (настройка formNamePrefix; пусто — не проверять). */
 export function formNameWarning(name: string, prefix: string): string | null {
     if (!prefix) return null;
-    return name.toLowerCase().startsWith(prefix.toLowerCase()) ? null : `Нет префикса ${prefix} (правило A3)`;
+    return name.toLowerCase().startsWith(prefix.toLowerCase()) ? null : L(`Нет префикса ${prefix} (правило A3)`, `Name does not start with the prefix ${prefix}`);
 }
 
 export const formFileName = (name: string) => `${name.toLowerCase()}.pmlfrm`;
@@ -79,16 +81,16 @@ export function newFormText(o: NewFormOptions): string {
     ];
     if (o.template === 'applyClose') {
         lines.push(
-            `${IND}button .bnApply |Применить| at x0 y0 wid 12`,
-            `${IND}button .bnClose |Закрыть| at xmax .bnApply + 1 ymin .bnApply wid 12`,
+            `${IND}button .bnApply ${q(L('Применить', 'Apply'))} at x0 y0 wid 12`,
+            `${IND}button .bnClose ${q(L('Закрыть', 'Close'))} at xmax .bnApply + 1 ymin .bnApply wid 12`,
         );
     }
     lines.push('exit', '');
-    lines.push(...methodBlock(o.name, 'Конструктор (минимальный — инициализация в .init())', []));
+    lines.push(...methodBlock(o.name, L('Конструктор (минимальный — инициализация в .init())', 'Constructor (minimal — initialisation in .init())'), []));
     const init = o.template === 'applyClose'
         ? ['!this.bnApply.callback = |!this.apply()|', '!this.bnClose.callback = |!this.hide()|']
         : [];
-    lines.push(...methodBlock('init', 'Инициализация формы: callbacks, заполнение гаджетов', init));
-    if (o.template === 'applyClose') lines.push(...methodBlock('apply', 'Кнопка «Применить»', []));
+    lines.push(...methodBlock('init', L('Инициализация формы: callbacks, заполнение гаджетов', 'Form initialisation: callbacks, filling gadgets'), init));
+    if (o.template === 'applyClose') lines.push(...methodBlock('apply', L('Кнопка «Применить»', 'Apply button'), []));
     return lines.join('\r\n');
 }

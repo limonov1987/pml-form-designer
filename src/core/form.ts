@@ -5,6 +5,7 @@
 import { tokenize, Token, kw } from './lexer';
 import { parseGadgetLine, ParsedGadget } from './gadget';
 
+import { L } from './i18n';
 export interface SourceLine {
     text: string;   // без конца строки
     eol: string;    // '\r\n' | '\n' | '\r' | ''
@@ -175,7 +176,7 @@ export function parseForm(text: string): FormDocument {
             if (DEFINE_METHOD_RE.test(lineText)) {
                 // E3D закрывает незакрытые блоки неявно (пример: LOCAL_LIB/aba/Forms/abaarealib.pmlfrm).
                 // Последний exit, закрывший frame, на самом деле закрывал setup — восстанавливаем это.
-                doc.warnings.push({ line: i, message: `Неявное закрытие ${stack.length} блок(ов) setup form перед define method` });
+                doc.warnings.push({ line: i, message: L(`Неявное закрытие ${stack.length} блок(ов) setup form перед define method`, `Implicit closing of ${stack.length} setup form block(s) before define method`) });
                 doc.setupEndLine = undefined;
                 doc.implicitEnd = i;
                 break;
@@ -195,8 +196,8 @@ export function parseForm(text: string): FormDocument {
                 const node: GadgetNode = { kind: 'gadget', line: i, gadget: g };
                 if (cont) { node.continuation = cont; i += cont; }
                 if (cond > 0) node.conditional = true;
-                if (cont) node.readOnly = 'Гаджет записан в несколько строк — правка только в коде';
-                else if (!g.name || !/^[A-Za-z]\w*$/.test(g.name)) node.readOnly = 'Имя гаджета задано макросом или не указано — правка только в коде';
+                if (cont) node.readOnly = L('Гаджет записан в несколько строк — правка только в коде', 'Gadget spans several lines — edit it in code');
+                else if (!g.name || !/^[A-Za-z]\w*$/.test(g.name)) node.readOnly = L('Имя гаджета задано макросом или не указано — правка только в коде', 'Gadget name is a macro or missing — edit it in code');
                 topNow.children.push(node);
                 // frame, view и старый rgroup открывают блок до exit
                 if (g.type === 'frame' || g.type === 'rgroup' || g.type === 'view') {
@@ -237,10 +238,10 @@ export function parseForm(text: string): FormDocument {
             topNow.children.push({ kind: 'statement', line: i, keyword: w || toks[0].text });
         }
         if (doc.setupEndLine === undefined && doc.implicitEnd === undefined) {
-            doc.problems.push({ line: doc.setupLine, message: 'Не найден exit блока setup form' });
+            doc.problems.push({ line: doc.setupLine, message: L('Не найден exit блока setup form', 'exit of the setup form block not found') });
         }
         if (stack.length > 1 && doc.setupEndLine !== undefined) {
-            doc.problems.push({ line: doc.setupEndLine, message: 'Незакрытый frame/menu/bar внутри setup form' });
+            doc.problems.push({ line: doc.setupEndLine, message: L('Незакрытый frame/menu/bar внутри setup form', 'Unclosed frame/menu/bar inside setup form') });
         }
     }
 

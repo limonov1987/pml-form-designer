@@ -33,9 +33,10 @@ code --install-extension pml-form-designer-<версия>.vsix
 ```
 
 Открыть форму: правый клик по `.pmlfrm` → **Open With… → PML Form Designer** или команда **«PML: Открыть в дизайнере форм»**.
+Язык интерфейса — русский или английский (настройка `pmlFormDesigner.language`, по умолчанию — язык VS Code).
 Новая форма: **«PML: Новая форма»** (палитра команд, контекстное меню папки, кнопка «＋ Новая форма» в дизайнере).
 
-### Что реализовано (0.1.0)
+### Что реализовано (0.1.1)
 
 **Просмотр**
 - холст с приблизительной раскладкой E3D: `path`/`hdist`/`vdist`/`align`, `at` (абсолютные и относительные `xmin .g`, `ymax .g + 1`, `xmax form`…),
@@ -66,8 +67,11 @@ code --install-extension pml-form-designer-<версия>.vsix
 **Новая форма с нуля** — мастер: имя → вид окна (dialog / docking right|left / resize / document) → заголовок →
 шаблон («Пустая» или «Применить/Закрыть»). Шапка файла, конструктор, метод `.init()` через `!this.initCall`.
 
+**Локализация (0.1.1)** — интерфейс на русском и английском: команды и настройки (по языку VS Code), панели, сообщения,
+а также тексты по умолчанию в генерируемом коде (`|Кнопка|` / `|Button|`, `|Страница 1|` / `|Page 1|`, шапка и описания методов новой формы).
+
 **Проверки качества**
-- модульные тесты (`npm test`, 39 тестов);
+- модульные тесты (`npm test`, 40 тестов);
 - корпусные прогоны на ~1300 реальных формах (штатная AppWare E3D 2.1 + проектные формы):
   печать без потерь — 0 расхождений; ~88 000 правок и ~5 500 переносов без новых диагностик внешнего анализатора PML;
 - сквозной тест webview в Edge через puppeteer-core (`npm run e2e`, 17 сценариев мышью/клавиатурой).
@@ -81,6 +85,7 @@ code --install-extension pml-form-designer-<версия>.vsix
 | `pmlFormDesigner.developer` | автор в шапке новых форм (пусто — имя пользователя ОС) |
 | `pmlFormDesigner.formNamePrefix` | префикс имён новых форм команды (подставляется и проверяется; пусто — без проверки) |
 | `pmlFormDesigner.newFormFolder` | папка новых форм относительно рабочей папки, напр. `working/gcc` (пусто — выбор в диалоге) |
+| `pmlFormDesigner.language` | `auto` (по языку VS Code), `en`, `ru`; после смены — переоткрыть дизайнер |
 
 ### Разработка
 
@@ -113,7 +118,7 @@ npm run corpus | layout | plugincheck | reparentcheck  # прогоны по к�
 6. **Список свойств шире** — все опции гаджетов по графам Справочника (combo editable, slider range, numericinput format…), отображение `pixmap`.
 7. **Буфер команд для E3D** — кнопка «скопировать `pml reload form !!x` / `show !!x`».
 8. Опционально — **живой предпросмотр** через PMLNet-аддин в E3D.
-9. Публикация в VS Code Marketplace / Open VSX, локализация интерфейса (сейчас — русский).
+9. Публикация в VS Code Marketplace / Open VSX.
 
 ---
 
@@ -141,11 +146,11 @@ npm run package          # → pml-form-designer-<version>.vsix
 code --install-extension pml-form-designer-<version>.vsix
 ```
 
-Open a form: right-click a `.pmlfrm` → **Open With… → PML Form Designer**, or run **"PML: Открыть в дизайнере форм"** (Open in form designer).
-New form: **"PML: Новая форма"** (New form) from the command palette, the folder context menu or the "＋" button in the designer.
-The UI is currently in Russian.
+Open a form: right-click a `.pmlfrm` → **Open With… → PML Form Designer**, or run **"PML: Open in Form Designer"**.
+New form: **"PML: New Form"** from the command palette, the folder context menu or the "＋" button in the designer.
+The UI is available in English and Russian (setting `pmlFormDesigner.language`, defaults to the VS Code display language).
 
-### Implemented (0.1.0)
+### Implemented (0.1.1)
 
 **Viewing**
 - canvas with an approximate E3D layout: `path`/`hdist`/`vdist`/`align`, `at` (absolute and relative `xmin .g`, `ymax .g + 1`, `xmax form`…),
@@ -174,8 +179,11 @@ The UI is currently in Russian.
 **New form from scratch** — wizard: name → window kind (dialog / docking right|left / resize / document) → title →
 template (empty or Apply/Close). File header, minimal constructor, `.init()` via `!this.initCall`.
 
+**Localisation (0.1.1)** — English and Russian UI: commands and settings (follow the VS Code language), panels, messages,
+and default texts in generated code (`|Button|` / `|Кнопка|`, `|Page 1|` / `|Страница 1|`, new form header and method descriptions).
+
 **Quality checks**
-- unit tests (`npm test`, 39 tests);
+- unit tests (`npm test`, 40 tests);
 - corpus runs on ~1300 real forms (stock E3D 2.1 AppWare + project forms): lossless round-trip — 0 differences;
   ~88,000 edits and ~5,500 reparent operations with no new diagnostics from an external PML analyser;
 - end-to-end webview test in Edge via puppeteer-core (`npm run e2e`, 17 mouse/keyboard scenarios).
@@ -189,6 +197,7 @@ template (empty or Apply/Close). File header, minimal constructor, `.init()` via
 | `pmlFormDesigner.developer` | author in the header of new forms (empty — OS user name) |
 | `pmlFormDesigner.formNamePrefix` | team prefix for new form names (pre-filled and checked; empty — no check) |
 | `pmlFormDesigner.newFormFolder` | folder for new forms relative to the workspace, e.g. `working/gcc` (empty — folder dialog) |
+| `pmlFormDesigner.language` | `auto` (VS Code display language), `en`, `ru`; reopen the designer after changing |
 
 ### Development
 
@@ -221,7 +230,7 @@ designer operations (`operations.ts`), layout engine (`layout.ts`), new form tem
 6. **Richer property grid** — all gadget options from the Reference Manual graphs (editable combo, slider range, numericinput format…), `pixmap` rendering.
 7. **E3D command clipboard** — "copy `pml reload form !!x` / `show !!x`" button.
 8. Optional **live preview** via a PMLNet add-in inside E3D.
-9. Publishing to the VS Code Marketplace / Open VSX, UI localisation (currently Russian).
+9. Publishing to the VS Code Marketplace / Open VSX.
 
 ### License
 

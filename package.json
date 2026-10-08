@@ -1,8 +1,8 @@
 {
   "name": "pml-form-designer",
   "displayName": "PML Form Designer",
-  "description": "Визуальный дизайнер форм AVEVA E3D PML (.pmlfrm) с точечной правкой кода",
-  "version": "0.1.0",
+  "description": "%description%",
+  "version": "0.1.1",
   "publisher": "limonov1987",
   "license": "MIT",
   "repository": {
@@ -41,12 +41,12 @@
     "commands": [
       {
         "command": "pmlFormDesigner.open",
-        "title": "Открыть в дизайнере форм",
+        "title": "%cmd.open%",
         "category": "PML"
       },
       {
         "command": "pmlFormDesigner.newForm",
-        "title": "Новая форма",
+        "title": "%cmd.newForm%",
         "category": "PML"
       }
     ],
@@ -61,10 +61,10 @@
           ],
           "default": "init",
           "enumDescriptions": [
-            "В методе инициализации формы: !this.gad.callback = |…| (правило B5 проекта); если метода нет — в строке гаджета",
-            "В строке гаджета: callback |…|"
+            "%cfg.callbackPlacement.init%",
+            "%cfg.callbackPlacement.gadget%"
           ],
-          "description": "Куда записывать callback при двойном щелчке по гаджету"
+          "description": "%cfg.callbackPlacement%"
         },
         "pmlFormDesigner.positionStyle": {
           "type": "string",
@@ -75,26 +75,41 @@
           ],
           "default": "auto",
           "enumDescriptions": [
-            "По стилю файла",
-            "xmin .gad + 0.25 (правило B1 проекта)",
+            "%cfg.positionStyle.auto%",
+            "xmin .gad + 0.25",
             "xmin.gad+0.25"
           ],
-          "description": "Запись относительных координат"
+          "description": "%cfg.positionStyle%"
         },
         "pmlFormDesigner.developer": {
           "type": "string",
           "default": "",
-          "description": "Автор в шапке новых форм (-- Developer:). Пусто — имя пользователя Windows"
+          "description": "%cfg.developer%"
         },
         "pmlFormDesigner.formNamePrefix": {
           "type": "string",
           "default": "",
-          "description": "Префикс имён новых форм (подставляется и проверяется в мастере «Новая форма»). Пусто — без проверки"
+          "description": "%cfg.formNamePrefix%"
         },
         "pmlFormDesigner.newFormFolder": {
           "type": "string",
           "default": "",
-          "description": "Папка новых форм относительно рабочей папки (напр. working/gcc). Пусто или папки нет — выбор в диалоге"
+          "description": "%cfg.newFormFolder%"
+        },
+        "pmlFormDesigner.language": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "en",
+            "ru"
+          ],
+          "default": "auto",
+          "enumDescriptions": [
+            "%cfg.language.auto%",
+            "English",
+            "Русский"
+          ],
+          "description": "%cfg.language%"
         }
       }
     },

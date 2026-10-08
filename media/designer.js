@@ -3,6 +3,30 @@
 // сообщением { type: 'op', req } (core/operations.ts) и возвращаются новым 'render' после правки текста.
 (function () {
   const vscode = acquireVsCodeApi();
+
+  // ---------- Язык: <html lang> задаёт расширение (ru | en); разметка по умолчанию — на русском ----------
+  const EN = document.documentElement.lang === 'en';
+  const T = (ru, en) => (EN ? en : ru);
+  const STATIC_EN = {
+    newForm: '＋ New form', newFormTip: 'Create a new form in the folder of this file',
+    modeTip: 'How to write the position of new gadgets and gadgets without AT when moving',
+    rel: 'Rel.', abs: 'Abs.', zoom: 'Zoom', grid: 'grid',
+    tbBasic: 'Basic', tbContainers: 'Containers', tbMore: 'More',
+    tipButton: 'button .x |Button| at … wid 10', tipText: 'text .x |Text| at … wid 10 is STRING', tipPara: 'para .x at … text |Label|',
+    tipToggle: 'toggle .x |Check| at …', tipOption: 'option .x |Option| at … wid 10', tipCombo: 'combo .x |List| tagwid 8 at … wid 10',
+    tipList: 'list .x |List| at … wid 20 hei 5', tipTextpane: 'textpane .x |Text| at … wid 30 hei 5',
+    tipFrame: 'frame .x |Frame| at … wid 20 hei 4 / exit', tipTabset: 'frame .x tabset + page',
+    toolRadiogroup: '◉ rtoggle group', tipRadiogroup: 'frame with two rtoggles (radio group, PML Reference 12.1)',
+    tipContainer: "container .x PmlNetControl '' — for NetGrid / .NET", tipRtoggle: 'rtoggle .x |Choice| — only inside a frame',
+    tipNumeric: 'numericinput .x |Number| tagwid 8 at … range 0 100 ndp 0 wid 6',
+    tipSelector: 'selector .x |Elements| at … single wid 25 hei 8 database auto',
+    tbHint: 'Drag onto the form, or pick and click a spot', selectHint: 'Select a gadget on the canvas or in the tree',
+  };
+  if (EN) {
+    document.querySelectorAll('[data-i18n]').forEach(el => { const v = STATIC_EN[el.dataset.i18n]; if (v) el.textContent = v; });
+    document.querySelectorAll('[data-i18n-title]').forEach(el => { const v = STATIC_EN[el.dataset.i18nTitle]; if (v) el.title = v; });
+  }
+
   const saved = vscode.getState() || {};
   const state = {
     data: null,
@@ -78,10 +102,11 @@
   function renderBanners() {
     const { model, encoding } = state.data;
     let b = '';
-    if (encoding === 'cp1251') b += '<div class="banner">Файл в кодировке cp1251 — правка в дизайнере после конвертации в UTF-8 с BOM.<button id="conv">Конвертировать в UTF-8 BOM</button></div>';
-    for (const p of model.problems) b += `<div class="banner err">Строка ${p.line + 1}: ${esc(p.message)}</div>`;
-    for (const w of model.warnings) b += `<div class="banner">Строка ${w.line + 1}: ${esc(w.message)}</div>`;
-    if (model.setupLine === undefined) b += '<div class="banner err">В файле не найден setup form.</div>';
+    if (encoding === 'cp1251') b += T('<div class="banner">Файл в кодировке cp1251 — правка в дизайнере после конвертации в UTF-8 с BOM.<button id="conv">Конвертировать в UTF-8 BOM</button></div>',
+      '<div class="banner">The file is in cp1251 — editing in the designer is available after conversion to UTF-8 with BOM.<button id="conv">Convert to UTF-8 BOM</button></div>');
+    for (const p of model.problems) b += `<div class="banner err">${T('Строка', 'Line')} ${p.line + 1}: ${esc(p.message)}</div>`;
+    for (const w of model.warnings) b += `<div class="banner">${T('Строка', 'Line')} ${w.line + 1}: ${esc(w.message)}</div>`;
+    if (model.setupLine === undefined) b += `<div class="banner err">${T('В файле не найден setup form.', 'No setup form found in the file.')}</div>`;
     $('banners').innerHTML = b;
     const conv = $('conv');
     if (conv) conv.onclick = () => vscode.postMessage({ type: 'convertEncoding' });
@@ -91,7 +116,7 @@
   // ---------- Дерево ----------
   function renderTree() {
     const html = list => !list || !list.length ? '' : '<ul>' + list.map(n =>
-      `<li><div class="row kind-${n.kind}${n.line === state.selLine ? ' sel' : ''}" data-line="${n.line}" title="${esc(n.label)}  (строка ${n.line + 1})">` +
+      `<li><div class="row kind-${n.kind}${n.line === state.selLine ? ' sel' : ''}" data-line="${n.line}" title="${esc(n.label)}  (${T('строка', 'line')} ${n.line + 1})">` +
       esc(n.label) + (n.detail ? `<span class="detail">${esc(n.detail)}</span>` : '') +
       (n.readOnly ? `<span class="ro" title="${esc(n.readOnly)}">⚠</span>` : '') +
       '</div>' + html(n.children) + '</li>').join('') + '</ul>';
@@ -153,7 +178,7 @@
             const pages = layout.gadgets.filter(p => p.page && p.page.tabset === g.name).sort((a, c) => a.page.index - c.page.index);
             const act = state.activePage[g.name] ?? 0;
             inner = '<div class="tabs">' + pages.map(p => `<span class="tab${p.page.index === act ? ' active' : ''}${p.line === state.selLine ? ' tsel' : ''}" data-tabset="${esc(g.name)}" data-page="${p.page.index}" data-line="${p.line}">${esc(p.tag || p.name)}</span>`).join('') +
-              (g.readOnly ? '' : `<span class="tab add" data-addpage="${g.line}" title="Добавить страницу">+</span>`) + '</div>' +
+              (g.readOnly ? '' : `<span class="tab add" data-addpage="${g.line}" title="${T('Добавить страницу', 'Add page')}">+</span>`) + '</div>' +
               `<div class="tabbody" style="top:${sy(g.content.dy) - 1}px"></div>`;
           } else if (!g.page && (sub === 'normal' || sub === 'folduppanel')) {
             inner = tag.trim() ? `<span class="ftitle">${tag}</span>` : '';
@@ -163,10 +188,10 @@
         }
         default: inner = tag;
       }
-      if (g.readOnly) inner += '<span class="ro-badge" title="Правка только в коде">⚠</span>';
+      if (g.readOnly) inner += `<span class="ro-badge" title="${T('Правка только в коде', 'Edit in code only')}">⚠</span>`;
       if (g.line === state.selLine && !g.readOnly && !g.page) inner += '<span class="h h-e" data-h="e"></span><span class="h h-s" data-h="s"></span><span class="h h-se" data-h="se"></span>';
       const z = (g.type === 'frame' ? 0 : 100) + depth(g, map);
-      const tip = `${g.type} .${g.name}` + (g.approx ? ` — приблизительно: ${g.approxWhy || ''}` : '') + (g.readOnly ? ' — правка только в коде' : '');
+      const tip = `${g.type} .${g.name}` + (g.approx ? ` — ${T('приблизительно', 'approximate')}: ${g.approxWhy || ''}` : '') + (g.readOnly ? T(' — правка только в коде', ' — edit in code only') : '');
       body += `<div class="${cls.join(' ')}" data-line="${g.line}" title="${esc(tip)}" ` +
         `style="left:${sx(b.x)}px;top:${sy(b.y)}px;width:${Math.max(sx(b.w), 2)}px;height:${Math.max(sy(b.h), 2)}px;z-index:${z}">${inner}</div>`;
     }
@@ -179,8 +204,10 @@
       `<div id="ghost"></div><div id="guideX" class="guide gx"></div><div id="guideY" class="guide gy"></div></div></div>`;
 
     const total = layout.gadgets.length, approx = layout.gadgets.filter(g => g.approx).length;
-    $('status').textContent = `Гаджетов: ${total}` + (approx ? ` · приблизительно: ${approx}` : '') +
-      ` · ${layout.varChars ? 'VarChars' : 'FixChars'} · Del — удалить, стрелки — сдвиг (Shift ×4), двойной щелчок — callback, Alt+щелчок — элемент под ним · раскладка оценочная, итог — в E3D`;
+    $('status').textContent = `${T('Гаджетов', 'Gadgets')}: ${total}` + (approx ? ` · ${T('приблизительно', 'approximate')}: ${approx}` : '') +
+      ` · ${layout.varChars ? 'VarChars' : 'FixChars'} · ` +
+      T('Del — удалить, стрелки — сдвиг (Shift ×4), двойной щелчок — callback, Alt+щелчок — элемент под ним · раскладка оценочная, итог — в E3D',
+        'Del — delete, arrows — move (Shift ×4), double-click — callback, Alt+click — gadget underneath · layout is approximate, check in E3D');
   }
 
   /** Координаты мыши → единицы сетки формы. */
@@ -306,7 +333,8 @@
         d.reparent = { parentLine: target ? target.line : null, x: r2(Math.max(0, snapX(ax - o.x))), y: r2(Math.max(0, snapY(ay - o.y))) };
         ghost.style.cssText = `display:block;left:${sx(o.x + d.reparent.x)}px;top:${sy(o.y + d.reparent.y)}px;width:${sx(d.box.w)}px;height:${sy(d.box.h)}px`;
         showGuide('guideX', null); showGuide('guideY', null);
-        $('status').textContent = `.${d.g.name} → ${target ? '.' + target.name : 'форма'}: x ${d.reparent.x}  y ${d.reparent.y} (перенос в другой контейнер)`;
+        $('status').textContent = `.${d.g.name} → ${target ? '.' + target.name : T('форма', 'form')}: x ${d.reparent.x}  y ${d.reparent.y} ` +
+          T('(перенос в другой контейнер)', '(move to another container)');
         return;
       }
       d.reparent = null;
@@ -337,16 +365,17 @@
       showGuide('guideY', d.snapY ? sy(origin.y + ly) : null);
       // привязка к гаджету НИЖЕ по тексту невозможна (E3D его ещё не знает) — выравнивание будет записано абсолютным числом
       const later = s => { const r = s && state.data.layout.gadgets.find(x => x.name === s.ref); return !!r && r.line > d.g.line; };
-      const snapText = (axis, s) => !s ? '' : later(s) ? `  ${axis === 'x' ? '⟷' : '↕'} по .${s.ref} → абс. (.${s.ref} ниже по тексту)` : `  ${axis === 'x' ? '⟷' : '↕'} ${axis}${s.edge} .${s.ref}`;
+      const snapText = (axis, s) => !s ? '' : later(s) ? `  ${axis === 'x' ? '⟷' : '↕'} ` + T(`по .${s.ref} → абс. (.${s.ref} ниже по тексту)`, `to .${s.ref} → abs. (.${s.ref} is later in the file)`) : `  ${axis === 'x' ? '⟷' : '↕'} ${axis}${s.edge} .${s.ref}`;
       $('guideX').classList.toggle('abs', later(d.snapX));
       $('guideY').classList.toggle('abs', later(d.snapY));
-      $('status').textContent = `.${d.g.name}: x ${d.nx}  y ${d.ny}` + snapText('x', d.snapX) + snapText('y', d.snapY) + '  (Alt — без привязки)';
+      $('status').textContent = `.${d.g.name}: x ${d.nx}  y ${d.ny}` + snapText('x', d.snapX) + snapText('y', d.snapY) + T('  (Alt — без привязки)', '  (Alt — no snapping)');
     } else {
       const w = d.h.includes('e') ? Math.max(1, snapX(d.box.w + dx)) : d.box.w;
       const h = d.h.includes('s') ? Math.max(0.5, snapY(d.box.h + dy)) : d.box.h;
       d.nw = r2(w); d.nh = r2(h);
       ghost.style.cssText = `display:block;left:${sx(d.box.x)}px;top:${sy(d.box.y)}px;width:${sx(w)}px;height:${sy(h)}px`;
-      $('status').textContent = `.${d.g.name}: ширина ${d.nw}  высота ${d.nh} (рамка гаджета, единицы сетки)`;
+      $('status').textContent = T(`.${d.g.name}: ширина ${d.nw}  высота ${d.nh} (рамка гаджета, единицы сетки)`,
+        `.${d.g.name}: width ${d.nw}  height ${d.nh} (gadget box, grid units)`);
     }
   });
 
@@ -445,15 +474,15 @@
 
   function renderPropsInner() {
     const p = state.data && state.selLine !== null ? state.data.props[state.selLine] : null;
-    if (!p) { $('props').innerHTML = '<div class="empty">Выберите гаджет на холсте или в дереве</div>'; return; }
+    if (!p) { $('props').innerHTML = `<div class="empty">${T('Выберите гаджет на холсте или в дереве', 'Select a gadget on the canvas or in the tree')}</div>`; return; }
     const ro = !!p.readOnly;
     const dis = ro ? ' disabled' : '';
     const field = (label, prop, value, hint = '') =>
       `<tr><td>${label}</td><td><input class="pf" data-prop="${prop}" value="${esc(value ?? '')}" placeholder="${esc(hint)}"${dis}></td></tr>`;
-    const modeLabel = { abs: 'абс.', rel: 'отн.', auto: 'авто', complex: 'выражение' };
+    const modeLabel = EN ? { abs: 'abs.', rel: 'rel.', auto: 'auto', complex: 'expression' } : { abs: 'абс.', rel: 'отн.', auto: 'авто', complex: 'выражение' };
     const posMode = p.xMode === 'complex' || p.yMode === 'complex' ? 'complex'
       : (p.xMode === 'rel' || p.yMode === 'rel') ? 'rel' : (p.xMode === 'abs' || p.yMode === 'abs') ? 'abs' : 'auto';
-    const cbInCode = p.callbackInCode.map(c => `<code>${esc(c.value)}</code> <span class="link" data-goto="${c.line}">в .${esc(c.method ?? '?')}() :${c.line + 1}</span>`).join('<br>');
+    const cbInCode = p.callbackInCode.map(c => `<code>${esc(c.value)}</code> <span class="link" data-goto="${c.line}">${T('в', 'in')} .${esc(c.method ?? '?')}() :${c.line + 1}</span>`).join('<br>');
     const flagBox = (flag, label) => `<label class="chk"><input type="checkbox" data-flag="${flag}"${p.flags.includes(flag) ? ' checked' : ''}${dis}> ${label}</label>`;
     const isTabset = p.type === 'frame' && p.flags.includes('tabset');
     const boxed = p.type === 'list' || p.type === 'textpane' || p.type === 'selector';
@@ -461,30 +490,30 @@
       `<h4>${esc(p.type)}${isTabset ? ' tabset' : ''} .${esc(p.name)}</h4>` +
       (ro ? `<div class="banner">${esc(p.readOnly)}</div>` : '') +
       '<table>' +
-      field('Имя', 'name', p.name) +
+      field(T('Имя', 'Name'), 'name', p.name) +
       // para: видимый текст — TEXT (tag не отображается); slider/line: tag не отображается (Справочник 12.1)
-      (p.type === 'paragraph' ? field('Текст', 'text', p.text ?? '') :
-        isTabset || p.type === 'slider' || p.type === 'line' ? '' : field(p.isPage ? 'Вкладка' : 'Tag', 'tag', p.tag ?? '')) +
+      (p.type === 'paragraph' ? field(T('Текст', 'Text'), 'text', p.text ?? '') :
+        isTabset || p.type === 'slider' || p.type === 'line' ? '' : field(p.isPage ? T('Вкладка', 'Tab') : 'Tag', 'tag', p.tag ?? '')) +
       (p.isPage ? '' :
-        `<tr><td>Позиция</td><td><span class="seg small">` +
-        `<button class="segb${posMode === 'rel' ? ' on' : ''}" data-setmode="rel"${dis}>Отн.</button>` +
-        `<button class="segb${posMode === 'abs' ? ' on' : ''}" data-setmode="abs"${dis}>Абс.</button></span>` +
+        `<tr><td>${T('Позиция', 'Position')}</td><td><span class="seg small">` +
+        `<button class="segb${posMode === 'rel' ? ' on' : ''}" data-setmode="rel"${dis}>${T('Отн.', 'Rel.')}</button>` +
+        `<button class="segb${posMode === 'abs' ? ' on' : ''}" data-setmode="abs"${dis}>${T('Абс.', 'Abs.')}</button></span>` +
         ` <span class="muted">x: ${modeLabel[p.xMode]}, y: ${modeLabel[p.yMode]}</span></td></tr>` +
-        field('X', 'x', p.x, 'авто (path)') + field('Y', 'y', p.y, 'авто (path)')) +
-      field('Ширина', 'width', p.width, 'по умолчанию') +
-      field(boxed ? 'Строк' : 'Высота', 'height', p.height, 'по умолчанию') +
-      (p.isPage ? '' : field('Callback', 'callback', p.callback ?? (p.callbackInCode[0]?.value ?? ''), '!this.метод()')) +
-      (cbInCode ? `<tr><td>в коде</td><td>${cbInCode}</td></tr>` : '') +
-      (p.isPage ? '' : field('Tooltip', 'tooltip', p.tooltip ?? '') + field('Anchor', 'anchor', p.anchor ?? '', 'напр. l+r+t') + field('Dock', 'dock', p.dock ?? '', 'напр. fill')) +
-      (p.type === 'list' ? `<tr><td>Выбор</td><td>${flagBox('multiple', 'multiple')}</td></tr>` : '') +
-      (p.type === 'button' ? `<tr><td>Вид</td><td>${flagBox('linklabel', 'linklabel')}</td></tr>` : '') +
-      (p.extras.length ? `<tr><td>Прочее</td><td>${p.extras.map(f => `<code>${esc(f)}</code>`).join(' ')}</td></tr>` : '') +
-      `<tr><td>Строка</td><td><span class="link" data-goto="${p.line}">${p.line + 1}</span></td></tr>` +
+        field('X', 'x', p.x, T('авто (path)', 'auto (path)')) + field('Y', 'y', p.y, T('авто (path)', 'auto (path)'))) +
+      field(T('Ширина', 'Width'), 'width', p.width, T('по умолчанию', 'default')) +
+      field(boxed ? T('Строк', 'Lines') : T('Высота', 'Height'), 'height', p.height, T('по умолчанию', 'default')) +
+      (p.isPage ? '' : field('Callback', 'callback', p.callback ?? (p.callbackInCode[0]?.value ?? ''), T('!this.метод()', '!this.method()'))) +
+      (cbInCode ? `<tr><td>${T('в коде', 'in code')}</td><td>${cbInCode}</td></tr>` : '') +
+      (p.isPage ? '' : field('Tooltip', 'tooltip', p.tooltip ?? '') + field('Anchor', 'anchor', p.anchor ?? '', T('напр. l+r+t', 'e.g. l+r+t')) + field('Dock', 'dock', p.dock ?? '', T('напр. fill', 'e.g. fill'))) +
+      (p.type === 'list' ? `<tr><td>${T('Выбор', 'Selection')}</td><td>${flagBox('multiple', 'multiple')}</td></tr>` : '') +
+      (p.type === 'button' ? `<tr><td>${T('Вид', 'Style')}</td><td>${flagBox('linklabel', 'linklabel')}</td></tr>` : '') +
+      (p.extras.length ? `<tr><td>${T('Прочее', 'Other')}</td><td>${p.extras.map(f => `<code>${esc(f)}</code>`).join(' ')}</td></tr>` : '') +
+      `<tr><td>${T('Строка', 'Line')}</td><td><span class="link" data-goto="${p.line}">${p.line + 1}</span></td></tr>` +
       '</table>' +
       '<div class="actions">' +
-      (isTabset && !ro ? '<button class="act" data-act="addPage">+ страница</button>' : '') +
-      (!ro && !p.isPage ? '<button class="act" data-act="callback" title="Двойной щелчок по гаджету">Callback ↗</button>' : '') +
-      (!ro ? '<button class="act danger" data-act="delete" title="Del">Удалить</button>' : '') +
+      (isTabset && !ro ? `<button class="act" data-act="addPage">${T('+ страница', '+ page')}</button>` : '') +
+      (!ro && !p.isPage ? `<button class="act" data-act="callback" title="${T('Двойной щелчок по гаджету', 'Double-click the gadget')}">Callback ↗</button>` : '') +
+      (!ro ? `<button class="act danger" data-act="delete" title="Del">${T('Удалить', 'Delete')}</button>` : '') +
       '</div>' +
       `<div class="src">${esc(p.source)}</div>`;
   }

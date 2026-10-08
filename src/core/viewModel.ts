@@ -4,6 +4,7 @@ import { FormDocument, FormNode, walkGadgets } from './form';
 import { Coord, SizeSpec } from './gadget';
 import { CodeStyle, detectStyle, formatCoord } from './edits';
 
+import { L } from './i18n';
 interface ViewNode { label: string; detail: string; line: number; kind: string; children?: ViewNode[]; readOnly?: string }
 
 export function toViewModel(doc: FormDocument) {
@@ -32,7 +33,7 @@ export function toViewModel(doc: FormDocument) {
     };
 }
 
-const sizeText = (s?: SizeSpec) => !s ? '' : s.mode === 'abs' ? String(s.value) : s.mode === 'same' ? `как .${s.ref || '(предыдущий)'}` : s.raw;
+const sizeText = (s?: SizeSpec) => !s ? '' : s.mode === 'abs' ? String(s.value) : s.mode === 'same' ? L(`как .${s.ref || '(предыдущий)'}`, `same as .${s.ref || '(previous)'}`) : s.raw;
 
 /** Свойства гаджетов для панели свойств (ключ — номер строки). */
 export function gadgetProps(doc: FormDocument, style?: CodeStyle) {

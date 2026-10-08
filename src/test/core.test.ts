@@ -550,3 +550,24 @@ test('привязка к гаджету ниже по тексту: вырав�
     assert.match(execute(src, { op: 'setProp', line: 2, prop: 'y', value: 'ymax .l + 0.25' }).error ?? '', /ниже по тексту/);
     assert.match(execute(src, { op: 'setProp', line: 2, prop: 'y', value: 'ymax .nope' }).error ?? '', /не найден/);
 });
+
+import { setLang } from '../core/i18n';
+
+test('локализация: английский — сообщения, тексты гаджетов и шаблон новой формы', () => {
+    setLang('en');
+    try {
+        const text = newFormText({ name: 'myForm', kind: 'dialog', resize: false, title: 'Test', developer: 'Dev', date: '2026-10-08', template: 'applyClose' });
+        assert.match(text, /button \.bnApply \|Apply\| at x0 y0 wid 12/);
+        assert.match(text, /button \.bnClose \|Close\|/);
+        assert.match(text, /-- Description: Form initialisation/);
+        assert.equal(validateFormName(''), 'Enter the form name');
+        assert.match(formNameWarning('myForm', 'bnp') ?? '', /prefix bnp/);
+        const a = run(text, { op: 'add', type: 'button', parentLine: null, x: 0, y: 0, mode: 'rel' });
+        assert.match(a.text, /button \.button1 \|Button\|/);
+        const b = run(a.text, { op: 'add', type: 'tabset', parentLine: null, x: 0, y: 5, mode: 'abs' });
+        assert.match(b.text, /frame \.tabset1Page1 \|Page 1\|/);
+        assert.match(execute(text, { op: 'setProp', line: 999, prop: 'x', value: '1' }).error ?? '', /Gadget not found/);
+    } finally {
+        setLang('ru');
+    }
+});

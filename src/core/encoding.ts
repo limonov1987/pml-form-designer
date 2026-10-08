@@ -1,6 +1,8 @@
 // Кодировки .pmlfrm. Логика перенесена из C:\Csharp\CP1251toUTF8 (EncodingConverter.cs):
 // cp1251 читается строго (недопустимый байт — ошибка), запись — всегда UTF-8 с BOM (решение 2026-10-07).
 
+import { L } from './i18n';
+
 export type FileEncoding = 'utf8bom' | 'utf8' | 'cp1251';
 
 // Символы cp1251 для байтов 0x80..0xFF; 0x98 в cp1251 не определён.
@@ -14,7 +16,7 @@ function cp1251Char(b: number): string {
     if (b < 0x80) return String.fromCharCode(b);
     if (b >= 0xC0) return String.fromCharCode(0x0410 + (b - 0xC0)); // А..я
     const ch = CP1251_HIGH[b - 0x80];
-    if (ch === '\uFFFF') throw new Error(`Байт 0x${b.toString(16)} недопустим в cp1251`);
+    if (ch === '\uFFFF') throw new Error(L(`Байт 0x${b.toString(16)} недопустим в cp1251`, `Byte 0x${b.toString(16)} is not valid in cp1251`));
     return ch;
 }
 

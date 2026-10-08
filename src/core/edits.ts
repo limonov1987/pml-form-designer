@@ -4,6 +4,7 @@
 import { Coord, Clause, ParsedGadget, SizeSpec, parseGadgetLine } from './gadget';
 import { FormDocument, GadgetNode, SourceLine, MethodInfo } from './form';
 
+import { L } from './i18n';
 export interface LineEdit {
     line: number;
     start: number;
@@ -302,28 +303,28 @@ export type NewGadgetType = 'button' | 'frame' | 'tabset' | 'list' | 'option' | 
  * Значения по умолчанию. Образцы записи — из SERVER_LIB (стиль проекта) и LOCAL_LIB (slider/numericinput/selector);
  * порядок частей — канонический (tag → tagwidth → at → … → width/height, правило B11), позицию `at` подставляет вызывающий.
  */
-const DEFAULTS: Record<NewGadgetType, { base: string; tag: string; w?: number; h?: number }> = {
-    button: { base: 'button', tag: 'Кнопка', w: 10 },
-    frame: { base: 'frame', tag: 'Рамка', w: 20, h: 4 },
+const DEFAULTS = (): Record<NewGadgetType, { base: string; tag: string; w?: number; h?: number }> => ({
+    button: { base: 'button', tag: L('Кнопка', 'Button'), w: 10 },
+    frame: { base: 'frame', tag: L('Рамка', 'Frame'), w: 20, h: 4 },
     tabset: { base: 'tabset', tag: '', w: 30, h: 8 },
-    list: { base: 'list', tag: 'Список', w: 20, h: 5 },
-    option: { base: 'option', tag: 'Выбор', w: 10 },
-    textpane: { base: 'textpane', tag: 'Текст', w: 30, h: 5 },
-    text: { base: 'text', tag: 'Текст', w: 10 },
-    toggle: { base: 'toggle', tag: 'Флажок' },
-    rtoggle: { base: 'rtoggle', tag: 'Вариант' },
-    radiogroup: { base: 'radio', tag: 'Выбор', w: 20 },
-    paragraph: { base: 'para', tag: 'Надпись' },
-    combo: { base: 'combo', tag: 'Список', w: 10 },
-    numericinput: { base: 'numeric', tag: 'Число', w: 6 },
+    list: { base: 'list', tag: L('Список', 'List'), w: 20, h: 5 },
+    option: { base: 'option', tag: L('Выбор', 'Option'), w: 10 },
+    textpane: { base: 'textpane', tag: L('Текст', 'Text'), w: 30, h: 5 },
+    text: { base: 'text', tag: L('Текст', 'Text'), w: 10 },
+    toggle: { base: 'toggle', tag: L('Флажок', 'Check') },
+    rtoggle: { base: 'rtoggle', tag: L('Вариант', 'Choice') },
+    radiogroup: { base: 'radio', tag: L('Выбор', 'Option'), w: 20 },
+    paragraph: { base: 'para', tag: L('Надпись', 'Label') },
+    combo: { base: 'combo', tag: L('Список', 'List'), w: 10 },
+    numericinput: { base: 'numeric', tag: L('Число', 'Number'), w: 6 },
     slider: { base: 'slider', tag: '', w: 20 },
     container: { base: 'net', tag: '', w: 30, h: 10 },
     line: { base: 'line', tag: '', w: 30, h: 0.5 },
-    selector: { base: 'selector', tag: 'Элементы', w: 25, h: 8 },
-};
+    selector: { base: 'selector', tag: L('Элементы', 'Elements'), w: 25, h: 8 },
+});
 
 /** База имени нового гаджета (button1, para1, net1 …). */
-export const newGadgetBase = (type: NewGadgetType) => DEFAULTS[type].base;
+export const newGadgetBase = (type: NewGadgetType) => DEFAULTS()[type].base;
 
 /** Все имена гаджетов, member и методов формы (в нижнем регистре). */
 export function usedNames(doc: FormDocument): Set<string> {
@@ -347,7 +348,7 @@ export function uniqueName(doc: FormDocument, base: string): string {
 
 /** Строки нового гаджета (без отступа контейнера — его добавляет вызывающий). */
 export function newGadgetLines(type: NewGadgetType, name: string, at: string, indentUnit: string, pageName?: string): string[] {
-    const d = DEFAULTS[type];
+    const d = DEFAULTS()[type];
     const size = [d.w !== undefined ? `wid ${d.w}` : '', d.h !== undefined ? `hei ${d.h}` : ''].filter(Boolean).join(' ');
     const tail = [at, size].filter(Boolean).join(' ');
     const t = quote(d.tag);
@@ -355,7 +356,7 @@ export function newGadgetLines(type: NewGadgetType, name: string, at: string, in
         case 'frame': return [`frame .${name} ${t} ${tail}`, 'exit'];
         case 'tabset': {
             const page = pageName ?? `${name}Page1`;
-            return [`frame .${name} tabset ${tail}`, `${indentUnit}frame .${page} ${quote('Страница 1')}`, `${indentUnit}exit`, 'exit'];
+            return [`frame .${name} tabset ${tail}`, `${indentUnit}frame .${page} ${quote(L('Страница 1', 'Page 1'))}`, `${indentUnit}exit`, 'exit'];
         }
         case 'text': return [`text .${name} ${t} ${tail} is STRING`];
         case 'toggle': case 'rtoggle': return [`${type} .${name} ${t} ${at}`];
@@ -363,8 +364,8 @@ export function newGadgetLines(type: NewGadgetType, name: string, at: string, in
         // выбранный — !this.<frame>.val, callback группы — у frame
         case 'radiogroup': {
             const [o1, o2] = pageName ? pageName.split(',') : [`${name}Opt1`, `${name}Opt2`];
-            return [`frame .${name} ${t} ${at}`, `${indentUnit}rtoggle .${o1} ${quote('Вариант 1')}`,
-                `${indentUnit}rtoggle .${o2} ${quote('Вариант 2')}`, 'exit'];
+            return [`frame .${name} ${t} ${at}`, `${indentUnit}rtoggle .${o1} ${quote(L('Вариант 1', 'Choice 1'))}`,
+                `${indentUnit}rtoggle .${o2} ${quote(L('Вариант 2', 'Choice 2'))}`, 'exit'];
         }
         case 'paragraph': return [`para .${name} ${at} text ${t}`];
         case 'combo': return [`combo .${name} ${t} tagwid 8 ${tail}`];

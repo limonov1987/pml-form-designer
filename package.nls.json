@@ -1,0 +1,15 @@
+{
+  "description": "Visual designer for AVEVA E3D PML forms (.pmlfrm) with surgical code edits",
+  "cmd.open": "Open in Form Designer",
+  "cmd.newForm": "New Form",
+  "cfg.callbackPlacement.init": "In the form init method: !this.gad.callback = |…|; on the gadget line if there is no init method",
+  "cfg.callbackPlacement.gadget": "On the gadget line: callback |…|",
+  "cfg.callbackPlacement": "Where to write the callback on gadget double-click",
+  "cfg.positionStyle.auto": "Detect from the file",
+  "cfg.positionStyle": "How relative coordinates are written",
+  "cfg.developer": "Author in the header of new forms (-- Developer:). Empty — OS user name",
+  "cfg.formNamePrefix": "Prefix of new form names (pre-filled and checked in the New Form wizard). Empty — no check",
+  "cfg.newFormFolder": "Folder for new forms relative to the workspace (e.g. working/gcc). Empty or missing — folder dialog",
+  "cfg.language.auto": "VS Code display language (Russian for ru, otherwise English)",
+  "cfg.language": "Designer language: messages, panels and default gadget texts in generated code. Reopen the designer after changing"
+}

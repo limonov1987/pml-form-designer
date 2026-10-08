@@ -4,6 +4,7 @@
 import { FormDocument, GadgetNode, parseForm, printLines, walkGadgets } from './form';
 import { Coord, SizeSpec } from './gadget';
 import { FormLayout, LaidGadget, layoutForm, widthSpecFromBox, heightSpecFromBox } from './layout';
+import { L } from './i18n';
 import {
     Edit, CodeStyle, detectStyle, setPosition, setSize, setTag, setCallback, setTooltip, setAnchor, setDock, setFlag,
     renameGadget, deleteGadget, findReferences, newGadgetLines, newPageLines, insertionPoint, indentUnitOf, uniqueName,
@@ -56,20 +57,20 @@ export function execute(text: string, req: Request, styleOverride?: CodeStyle): 
     const laid = node ? layout.gadgets.find(g => g.line === node.line) : undefined;
     const fail = (error: string): Result => ({ edits: [], error });
 
-    if ('line' in req && !node) return fail('Гаджет не найден — обновите дизайнер');
+    if ('line' in req && !node) return fail(L('Гаджет не найден — обновите дизайнер', 'Gadget not found — refresh the designer'));
     if (node?.readOnly && req.op !== 'callback') return fail(node.readOnly);
     // гаджет есть в тексте, но не раскладывается на холсте (напр. строка внутри view…exit) — двигать нечего
-    if (node && !laid && ['move', 'nudge', 'resize', 'setMode', 'reparent'].includes(req.op)) return fail('Гаджет не отображается на холсте — правка только в коде');
+    if (node && !laid && ['move', 'nudge', 'resize', 'setMode', 'reparent'].includes(req.op)) return fail(L('Гаджет не отображается на холсте — правка только в коде', 'Gadget is not shown on the canvas — edit it in code'));
 
     switch (req.op) {
         case 'move': {
-            if (laid!.page) return fail('Страница tabset перемещается вместе с tabset');
+            if (laid!.page) return fail(L('Страница tabset перемещается вместе с tabset', 'A tabset page moves together with its tabset'));
             const g = node!.gadget;
             // ось без AT (автоматическая расстановка) — по переключателю «Отн./Абс.» на панели
             const modeFor = (c?: Coord): PosMode => (!c && req.mode === 'keep' ? req.defaultMode ?? 'rel' : req.mode);
             const x = coordFor('x', r1(req.x), laid!, g.at?.x, modeFor(g.at?.x), req.snapX, layout);
             const y = coordFor('y', r1(req.y), laid!, g.at?.y, modeFor(g.at?.y), req.snapY, layout);
-            if ((g.at?.x && !g.at.x.exact) || (g.at?.y && !g.at.y.exact)) return fail('Позиция задана сложным выражением — правьте в коде');
+            if ((g.at?.x && !g.at.x.exact) || (g.at?.y && !g.at.y.exact)) return fail(L('Позиция задана сложным выражением — правьте в коде', 'Position is a complex expression — edit it in code'));
             return keepOthersInPlace(text, doc, layout, node!, [setPosition(node!, x, y, st)], st);
         }
 
@@ -85,7 +86,7 @@ export function execute(text: string, req: Request, styleOverride?: CodeStyle): 
 
         case 'setMode': {
             const g = node!.gadget;
-            if ((g.at?.x && !g.at.x.exact) || (g.at?.y && !g.at.y.exact)) return fail('Позиция задана сложным выражением — правьте в коде');
+            if ((g.at?.x && !g.at.x.exact) || (g.at?.y && !g.at.y.exact)) return fail(L('Позиция задана сложным выражением — правьте в коде', 'Position is a complex expression — edit it in code'));
             const x = coordFor('x', laid!.local.x, laid!, g.at?.x, req.mode, undefined, layout);
             const y = coordFor('y', laid!.local.y, laid!, g.at?.y, req.mode, undefined, layout);
             return { edits: [setPosition(node!, x, y, st)] };
@@ -95,10 +96,10 @@ export function execute(text: string, req: Request, styleOverride?: CodeStyle): 
 
         case 'add': {
             const parent = req.parentLine === null ? undefined : findNode(doc, req.parentLine);
-            if (parent && parent.gadget.type !== 'frame') return fail('Гаджеты добавляются в форму или frame');
-            if (parent?.gadget.flags.includes('tabset')) return fail('В tabset добавляются только страницы — выберите страницу');
+            if (parent && parent.gadget.type !== 'frame') return fail(L('Гаджеты добавляются в форму или frame', 'Gadgets are added to the form or a frame'));
+            if (parent?.gadget.flags.includes('tabset')) return fail(L('В tabset добавляются только страницы — выберите страницу', 'Only pages can be added to a tabset — pick a page'));
             // Справочник 12.1, RTOGGLE: «allowed only within FRAMES»
-            if (req.type === 'rtoggle' && !parent) return fail('rtoggle допускается только внутри frame — бросьте его в рамку (или возьмите «Группу переключателей»)');
+            if (req.type === 'rtoggle' && !parent) return fail(L('rtoggle допускается только внутри frame — бросьте его в рамку (или возьмите «Группу переключателей»)', 'rtoggle is allowed only inside a frame — drop it into a frame (or use the rtoggle group)'));
             const ip = insertionPoint(doc, parent);
             const unit = indentUnitOf(doc);
             const name = uniqueName(doc, newGadgetBase(req.type));
@@ -117,19 +118,19 @@ export function execute(text: string, req: Request, styleOverride?: CodeStyle): 
 
         case 'addPage': {
             const ts = node!.gadget.flags.includes('tabset') ? node! : undefined;
-            if (!ts) return fail('Страницы добавляются в tabset');
+            if (!ts) return fail(L('Страницы добавляются в tabset', 'Pages are added to a tabset'));
             const pages = (ts.children ?? []).filter(n => n.kind === 'gadget' && n.gadget.type === 'frame').length;
             const ip = insertionPoint(doc, ts);
             const name = uniqueName(doc, `${ts.gadget.name}Page`);
             const indent = ip.indent;
-            return { edits: [{ line: ip.line, deleteCount: 0, insert: newPageLines(name, `Страница ${pages + 1}`).map(l => indent + l) }], select: name };
+            return { edits: [{ line: ip.line, deleteCount: 0, insert: newPageLines(name, L(`Страница ${pages + 1}`, `Page ${pages + 1}`)).map(l => indent + l) }], select: name };
         }
 
         case 'delete': {
             const refs = findReferences(doc, node!);
             if (refs.length && !req.force) {
                 const list = refs.slice(0, 8).map(i => `${i + 1}: ${doc.lines[i].text.trim().slice(0, 70)}`).join('\n');
-                return { edits: [], confirm: `На .${node!.gadget.name} ссылаются ${refs.length} строк(и):\n${list}${refs.length > 8 ? '\n…' : ''}\n\nУдалить гаджет? Ссылки останутся в коде.` };
+                return { edits: [], confirm: L(`На .${node!.gadget.name} ссылаются ${refs.length} строк(и):\n${list}${refs.length > 8 ? '\n…' : ''}\n\nУдалить гаджет? Ссылки останутся в коде.`, `.${node!.gadget.name} is referenced by ${refs.length} line(s):\n${list}${refs.length > 8 ? '\n…' : ''}\n\nDelete the gadget? The references will stay in the code.`) };
             }
             const del = deleteGadget(node!);
             return { edits: [{ ...del, deleteCount: del.deleteCount + (node!.continuation ?? 0), insert: closePrevRgroup(doc, node!) }] };
@@ -142,7 +143,7 @@ export function execute(text: string, req: Request, styleOverride?: CodeStyle): 
             const existing = g.callback ?? doc.callbackAssigns.find(c => c.gadget.toLowerCase() === g.name.toLowerCase())?.value;
             const target = existing && /!this\.(\w+)\s*\(/i.exec(existing);
             if (target && doc.methods.some(m => m.name.toLowerCase() === target[1].toLowerCase())) return { edits: [], revealMethod: target[1] };
-            if (existing && !target) return fail(`Callback уже задан: ${existing}`);
+            if (existing && !target) return fail(L(`Callback уже задан: ${existing}`, `Callback is already set: ${existing}`));
             if (node!.readOnly) return fail(node!.readOnly);
             const method = target ? target[1] : uniqueMethodName(doc, `${g.name}Callback`);
             const value = `!this.${method}()`;
@@ -151,7 +152,7 @@ export function execute(text: string, req: Request, styleOverride?: CodeStyle): 
                 const inInit = req.placement === 'init' ? setCallbackInInit(doc, g.name, value) : undefined;
                 edits.push(inInit ?? setCallback(node!, value));
             }
-            const stub = addMethodStub(doc, method, [], `Callback гаджета .${g.name}`);
+            const stub = addMethodStub(doc, method, [], L(`Callback гаджета .${g.name}`, `Callback of gadget .${g.name}`));
             if (stub) edits.push(stub);
             return { edits, revealMethod: method };
         }
@@ -237,8 +238,8 @@ function keepOthersInPlace(text: string, doc: FormDocument, layout: FormLayout, 
         if (moved.name) fixedNames.push('.' + moved.name);
     }
     const notes: string[] = [];
-    if (fixedNames.length) notes.push(`оставлены на месте (были привязаны к .${node.gadget.name}): ${fixedNames.join(', ')}`);
-    if (skipped.length) notes.push(`сдвинулись вместе с ним (позиция в коде сложная/условная): ${skipped.join(', ')}`);
+    if (fixedNames.length) notes.push(L(`оставлены на месте (были привязаны к .${node.gadget.name}): ${fixedNames.join(', ')}`, `kept in place (were positioned from .${node.gadget.name}): ${fixedNames.join(', ')}`));
+    if (skipped.length) notes.push(L(`сдвинулись вместе с ним (позиция в коде сложная/условная): ${skipped.join(', ')}`, `moved along with it (complex/conditional position in code): ${skipped.join(', ')}`));
     return { edits, notice: notes.length ? notes.join('; ') : undefined };
 }
 
@@ -322,21 +323,21 @@ function newCoords(x: number, y: number, mode: 'abs' | 'rel', prev: LaidGadget |
 function reparent(doc: FormDocument, layout: FormLayout, node: GadgetNode, laid: LaidGadget,
     req: Extract<Request, { op: 'reparent' }>, st: CodeStyle): Result {
     const fail = (error: string): Result => ({ edits: [], error });
-    if (laid.page) return fail('Страница tabset переносится только вместе с tabset');
-    if (node.conditional) return fail('Гаджет внутри if/do в setup (создаётся по условию) — переносите в коде');
+    if (laid.page) return fail(L('Страница tabset переносится только вместе с tabset', 'A tabset page can only be moved together with its tabset'));
+    if (node.conditional) return fail(L('Гаджет внутри if/do в setup (создаётся по условию) — переносите в коде', 'Gadget is inside if/do in setup (created conditionally) — move it in code'));
     const target = req.parentLine === null ? undefined : findNode(doc, req.parentLine);
-    if (req.parentLine !== null && !target) return fail('Контейнер не найден — обновите дизайнер');
-    if (target && target.gadget.type !== 'frame') return fail('Переносить можно в форму или frame');
-    if (target?.gadget.flags.includes('tabset')) return fail('В tabset — только страницы: перенесите гаджет на страницу');
+    if (req.parentLine !== null && !target) return fail(L('Контейнер не найден — обновите дизайнер', 'Container not found — refresh the designer'));
+    if (target && target.gadget.type !== 'frame') return fail(L('Переносить можно в форму или frame', 'Gadgets can be moved to the form or a frame'));
+    if (target?.gadget.flags.includes('tabset')) return fail(L('В tabset — только страницы: перенесите гаджет на страницу', 'A tabset holds only pages — move the gadget onto a page'));
     if (target?.readOnly) return fail(target.readOnly);
     const last = (node.endLine ?? node.line) + (node.continuation ?? 0);
-    if (target && target.line >= node.line && target.line <= last) return fail('Нельзя перенести frame внутрь самого себя');
+    if (target && target.line >= node.line && target.line <= last) return fail(L('Нельзя перенести frame внутрь самого себя', 'A frame cannot be moved into itself'));
     const targetName = target?.gadget.name ?? '';
-    if (targetName.toLowerCase() === laid.parent.toLowerCase()) return fail('Гаджет уже в этом контейнере');
+    if (targetName.toLowerCase() === laid.parent.toLowerCase()) return fail(L('Гаджет уже в этом контейнере', 'The gadget is already in this container'));
 
     // режим записи: как у гаджета сейчас (любая относительная ось → rel), без AT — по переключателю
     const g = node.gadget;
-    if ((g.at?.x && !g.at.x.exact) || (g.at?.y && !g.at.y.exact)) return fail('Позиция задана сложным выражением — правьте в коде');
+    if ((g.at?.x && !g.at.x.exact) || (g.at?.y && !g.at.y.exact)) return fail(L('Позиция задана сложным выражением — правьте в коде', 'Position is a complex expression — edit it in code'));
     const mode: 'abs' | 'rel' = !g.at ? req.defaultMode ?? 'rel'
         : (g.at.x?.mode === 'rel' || g.at.y?.mode === 'rel') ? 'rel' : 'abs';
     const prevs = layout.gadgets.filter(x => x.parent.toLowerCase() === targetName.toLowerCase() && !x.page && x.line !== node.line);
@@ -368,14 +369,18 @@ function reparent(doc: FormDocument, layout: FormLayout, node: GadgetNode, laid:
         // строка без гаджета (напр. оператор в setup), «только просмотр» или сложное выражение — автоматически не пересчитать
         const blocked = owners.some(o => !o || o.readOnly || [o.gadget.at?.x, o.gadget.at?.y].some(c => c && !c.exact));
         if (blocked) {
-            return fail(`Нельзя перенести .${g.name}: от него позиционируются гаджеты выше по тексту (строки ${forward.map(i => i + 1).join(', ')}), ` +
-                'и их позицию нельзя пересчитать автоматически. Правьте в коде.');
+            return fail(L(`Нельзя перенести .${g.name}: от него позиционируются гаджеты выше по тексту (строки ${forward.map(i => i + 1).join(', ')}), ` +
+                'и их позицию нельзя пересчитать автоматически. Правьте в коде.',
+                `Cannot move .${g.name}: gadgets earlier in the file are positioned from it (lines ${forward.map(i => i + 1).join(', ')}) ` +
+                'and their position cannot be recalculated automatically. Edit it in code.'));
         }
         const names = owners.map(o => '.' + o!.gadget.name).join(', ');
         if (!req.force) {
             return {
-                edits: [], confirm: `От .${g.name} позиционируются ${names} — после переноса они окажутся выше по тексту ` +
+                edits: [], confirm: L(`От .${g.name} позиционируются ${names} — после переноса они окажутся выше по тексту ` +
                     `(ссылка вперёд: E3D не загрузит форму).\n\nПеревести их позицию в абсолютную и перенести .${g.name}?`,
+                    `${names} are positioned from .${g.name} — after the move they will be earlier in the file ` +
+                    `(forward reference: E3D will not load the form).\n\nMake their position absolute and move .${g.name}?`),
             };
         }
         for (const o of owners as GadgetNode[]) {
@@ -388,21 +393,21 @@ function reparent(doc: FormDocument, layout: FormLayout, node: GadgetNode, laid:
             if (sizeRefs(o.gadget.width)) fixEdits.push(setSize(o, 'width', { mode: 'abs', value: widthSpecFromBox(o.gadget, lo.box.w, layout.varChars), raw: '' }));
             if (sizeRefs(o.gadget.height)) fixEdits.push(setSize(o, 'height', { mode: 'abs', value: heightSpecFromBox(o.gadget, lo.box.h), raw: '' }));
         }
-        notes.push(`позиция ${names} переведена в абсолютную`);
+        notes.push(L(`позиция ${names} переведена в абсолютную`, `position of ${names} made absolute`));
     }
     const later = atRefs.filter(i => !forward.includes(i));
-    if (later.length) notes.push(`на .${g.name} ссылаются строки ${later.map(i => i + 1).join(', ')} — их позиции теперь считаются от гаджета в другом контейнере`);
+    if (later.length) notes.push(L(`на .${g.name} ссылаются строки ${later.map(i => i + 1).join(', ')} — их позиции теперь считаются от гаджета в другом контейнере`, `lines ${later.map(i => i + 1).join(', ')} reference .${g.name} — their positions are now relative to a gadget in another container`));
     const sibs = layout.gadgets.filter(x => x.parent === laid.parent && !x.page);
     const next = sibs[sibs.indexOf(laid) + 1];
     if (next) {
         const nn = findNode(doc, next.line);
         const unnamed = !nn?.gadget.at || [nn.gadget.at.x, nn.gadget.at.y].some(c => !c || (c.mode === 'rel' && c.ref === ''));
-        if (unnamed) notes.push(`.${next.name} расставлен от предыдущего гаджета — его позиция изменится`);
+        if (unnamed) notes.push(L(`.${next.name} расставлен от предыдущего гаджета — его позиция изменится`, `.${next.name} is placed after the previous gadget — its position will change`));
     }
     return {
         edits: [...fixEdits, { line: node.line, deleteCount: last - node.line + 1, insert: closePrevRgroup(doc, node) }, { line: ip.line, deleteCount: 0, insert: text }],
         select: g.name,
-        notice: notes.length ? `Перенос .${g.name}: ${notes.join('; ')}.` : undefined,
+        notice: notes.length ? L(`Перенос .${g.name}: ${notes.join('; ')}.`, `Moved .${g.name}: ${notes.join('; ')}.`) : undefined,
     };
 }
 
@@ -414,15 +419,15 @@ function setProp(doc: FormDocument, node: GadgetNode, prop: string, value: strin
         case 'tag': return { edits: [setTag(node, value)] };
         case 'text': return { edits: [setText(node, value)] };
         case 'name': {
-            if (!/^[A-Za-z]\w*$/.test(v)) return fail('Имя: латинские буквы, цифры, _; начинается с буквы');
-            if (v.toLowerCase() !== g.name.toLowerCase() && usedNames(doc).has(v.toLowerCase())) return fail(`Имя .${v} уже занято (гаджет, member или метод)`);
+            if (!/^[A-Za-z]\w*$/.test(v)) return fail(L('Имя: латинские буквы, цифры, _; начинается с буквы', 'Name: Latin letters, digits, _; must start with a letter'));
+            if (v.toLowerCase() !== g.name.toLowerCase() && usedNames(doc).has(v.toLowerCase())) return fail(L(`Имя .${v} уже занято (гаджет, member или метод)`, `The name .${v} is already used (gadget, member or method)`));
             return { edits: renameGadget(doc, node, v), select: v };
         }
         case 'callback': {
             // где записан callback: в строке гаджета или в коде (`!this.gad.callback = |…|`, правило B5)
             const assign = doc.callbackAssigns.find(c => c.gadget.toLowerCase() === g.name.toLowerCase());
             const inCode = !!assign && g.callback === undefined;
-            if (inCode && !v) return fail(`Callback назначен в коде (строка ${assign!.line + 1}) — удалите его там`);
+            if (inCode && !v) return fail(L(`Callback назначен в коде (строка ${assign!.line + 1}) — удалите его там`, `Callback is assigned in code (line ${assign!.line + 1}) — remove it there`));
             const setEdit = (): Edit => (inCode ? setCallbackInInit(doc, g.name, v)! : setCallback(node, v || undefined));
 
             // динамический callback (2026-10-08): `!this.старый()` → `!this.новый()`
@@ -435,25 +440,25 @@ function setProp(doc: FormDocument, node: GadgetNode, prop: string, value: strin
                 const others = methodCalls(doc, oldName!).filter(c => c.line !== cbLine);
                 if (!newM) {
                     // нового метода нет → переименовать старый (define, блок -- Method:, все вызовы, сам callback)
-                    if (usedNames(doc).has(newName.toLowerCase())) return fail(`Имя .${newName} занято гаджетом или member`);
+                    if (usedNames(doc).has(newName.toLowerCase())) return fail(L(`Имя .${newName} занято гаджетом или member`, `The name .${newName} is used by a gadget or member`));
                     return {
                         edits: renameMethod(doc, oldM, newName),
-                        notice: others.length ? `Метод .${oldName} переименован в .${newName}; обновлены и другие вызовы (строки ${others.map(c => c.line + 1).join(', ')})` : undefined,
+                        notice: others.length ? L(`Метод .${oldName} переименован в .${newName}; обновлены и другие вызовы (строки ${others.map(c => c.line + 1).join(', ')})`, `Method .${oldName} renamed to .${newName}; other calls updated too (lines ${others.map(c => c.line + 1).join(', ')})`) : undefined,
                     };
                 }
                 // новый метод есть → переключить callback и удалить старый (если больше нигде не вызывается)
                 if (others.length) {
-                    return { edits: [setEdit()], notice: `Метод .${oldName} не удалён: он вызывается ещё в строках ${others.map(c => c.line + 1).join(', ')}` };
+                    return { edits: [setEdit()], notice: L(`Метод .${oldName} не удалён: он вызывается ещё в строках ${others.map(c => c.line + 1).join(', ')}`, `Method .${oldName} was not deleted: it is also called on lines ${others.map(c => c.line + 1).join(', ')}`) };
                 }
                 if (methodHasBody(doc, oldM) && !force) {
-                    return { edits: [], confirm: `Callback переключается на существующий метод .${newName}.\n\nСтарый метод .${oldName} содержит код. Удалить его?` };
+                    return { edits: [], confirm: L(`Callback переключается на существующий метод .${newName}.\n\nСтарый метод .${oldName} содержит код. Удалить его?`, `The callback switches to the existing method .${newName}.\n\nThe old method .${oldName} contains code. Delete it?`) };
                 }
-                return { edits: [setEdit(), deleteMethod(doc, oldM)], notice: `Метод .${oldName} удалён (callback → .${newName})` };
+                return { edits: [setEdit(), deleteMethod(doc, oldM)], notice: L(`Метод .${oldName} удалён (callback → .${newName})`, `Method .${oldName} deleted (callback → .${newName})`) };
             }
             // метода нового callback ещё нет → заглушка (как при двойном щелчке)
             if (newName && !newM && !(oldName && oldName.toLowerCase() === newName.toLowerCase())) {
-                if (usedNames(doc).has(newName.toLowerCase())) return fail(`Имя .${newName} занято гаджетом или member`);
-                const stub = addMethodStub(doc, newName, [], `Callback гаджета .${g.name}`);
+                if (usedNames(doc).has(newName.toLowerCase())) return fail(L(`Имя .${newName} занято гаджетом или member`, `The name .${newName} is used by a gadget or member`));
+                const stub = addMethodStub(doc, newName, [], L(`Callback гаджета .${g.name}`, `Callback of gadget .${g.name}`));
                 return { edits: stub ? [setEdit(), stub] : [setEdit()] };
             }
             return { edits: [setEdit()] };
@@ -470,19 +475,19 @@ function setProp(doc: FormDocument, node: GadgetNode, prop: string, value: strin
         case 'x': case 'y': {
             const axis = prop;
             const other = axis === 'x' ? g.at?.y : g.at?.x;
-            if (other && !other.exact) return fail('Другая координата задана сложным выражением — правьте в коде');
+            if (other && !other.exact) return fail(L('Другая координата задана сложным выражением — правьте в коде', 'The other coordinate is a complex expression — edit it in code'));
             const c = v ? parseCoordText(axis, v) : undefined;
-            if (v && !c) return fail(`Не удалось разобрать координату: ${v}`);
+            if (v && !c) return fail(L(`Не удалось разобрать координату: ${v}`, `Cannot parse the coordinate: ${v}`));
             // ссылка — только на гаджет выше по тексту (иначе E3D его не найдёт)
             if (c?.mode === 'rel' && c.ref && c.ref.toLowerCase() !== 'form') {
                 const target = [...walkGadgets(doc.nodes)].find(x => x.node.gadget.name.toLowerCase() === c.ref!.toLowerCase())?.node;
-                if (!target) return fail(`Гаджет .${c.ref} не найден в форме`);
-                if (target.line > node.line) return fail(`.${target.gadget.name} определён ниже по тексту (строка ${target.line + 1}) — E3D его не найдёт. Ссылайтесь на гаджет выше или задайте абсолютную координату`);
+                if (!target) return fail(L(`Гаджет .${c.ref} не найден в форме`, `Gadget .${c.ref} not found in the form`));
+                if (target.line > node.line) return fail(L(`.${target.gadget.name} определён ниже по тексту (строка ${target.line + 1}) — E3D его не найдёт. Ссылайтесь на гаджет выше или задайте абсолютную координату`, `.${target.gadget.name} is defined later in the file (line ${target.line + 1}) — E3D will not find it. Reference a gadget above or use an absolute coordinate`));
             }
             return { edits: [setPosition(node, axis === 'x' ? c : other, axis === 'y' ? c : other, st)] };
         }
         case 'multiple': return { edits: [setFlag(node, 'multiple', v === 'true')] };
         case 'linklabel': return { edits: [setFlag(node, 'linklabel', v === 'true')] };
-        default: return fail(`Свойство ${prop} не редактируется`);
+        default: return fail(L(`Свойство ${prop} не редактируется`, `Property ${prop} is not editable`));
     }
 }
